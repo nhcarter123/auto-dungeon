@@ -1,9 +1,8 @@
 import Phaser from "phaser";
-import { uniqBy } from "lodash";
 import { nanoid } from "nanoid";
 import { lerp } from "./scenes/Game";
 
-const MAX_XP = 6;
+export const MAX_XP = 6;
 
 export enum UnitType {
   Skeleton = "Skeleton",
@@ -24,6 +23,15 @@ interface ImageData {
   startingDir: number;
 }
 
+const levelImagePath = "assets/sprites/level.png";
+
+enum EImageKey {
+  Skeleton = "Skeleton",
+  Ogre = "Ogre",
+  Golem = "Golem",
+  Level = "Level",
+}
+
 const getUnitDataFromType = (type: UnitType): UnitDefaultData => {
   switch (type) {
     case UnitType.Ogre:
@@ -31,8 +39,8 @@ const getUnitDataFromType = (type: UnitType): UnitDefaultData => {
         attack: 1,
         health: 2,
         imageData: {
-          key: UnitType.Ogre,
-          path: "assets/ogre.png",
+          key: EImageKey.Ogre,
+          path: "assets/images/ogre.png",
           scale: 0.35,
           startingDir: -1,
         },
@@ -42,8 +50,8 @@ const getUnitDataFromType = (type: UnitType): UnitDefaultData => {
         attack: 1,
         health: 5,
         imageData: {
-          key: UnitType.Golem,
-          path: "assets/golem.png",
+          key: EImageKey.Golem,
+          path: "assets/images/golem.png",
           scale: 0.2,
           startingDir: -1,
         },
@@ -54,8 +62,8 @@ const getUnitDataFromType = (type: UnitType): UnitDefaultData => {
         attack: 2,
         health: 1,
         imageData: {
-          key: UnitType.Skeleton,
-          path: "assets/skeleton.png",
+          key: EImageKey.Skeleton,
+          path: "assets/images/skeleton.png",
           scale: 0.35,
           startingDir: 1,
         },
@@ -77,6 +85,7 @@ export class Unit {
   public attackObjectBackground: Phaser.GameObjects.Arc | null;
   public healthObject: Phaser.GameObjects.Text | null;
   public healthObjectBackground: Phaser.GameObjects.Arc | null;
+  public levelObject: Phaser.GameObjects.Sprite | null;
   public xp: number;
   public depth: number;
   public scale: number;
@@ -98,10 +107,19 @@ export class Unit {
     this.attackObjectBackground = null;
     this.healthObject = null;
     this.healthObjectBackground = null;
+    this.levelObject = null;
     this.xp = 1;
     this.depth = 0;
     this.scale = 1;
     this.scaleMod = 1;
+  }
+
+  preload(load: Phaser.Loader.LoaderPlugin) {
+    load.image(this.imageData.key, this.imageData.path);
+    load.spritesheet(EImageKey.Level, levelImagePath, {
+      frameWidth: 242,
+      frameHeight: 142,
+    });
   }
 
   create(add: Phaser.GameObjects.GameObjectFactory) {
@@ -118,22 +136,33 @@ export class Unit {
     };
 
     this.gameObject.flipX = this.facingDir * this.imageData.startingDir > 0;
-    this.attackObject = add.text(0, 0, this.attack.toString(), fontStyle);
-    this.healthObject = add.text(0, 0, this.health.toString(), fontStyle);
+    this.attackObject = add.text(
+      this.startX,
+      this.startY,
+      this.attack.toString(),
+      fontStyle
+    );
+    this.healthObject = add.text(
+      this.startX,
+      this.startY,
+      this.health.toString(),
+      fontStyle
+    );
     this.attackObjectBackground = add.circle(
-      0,
-      0,
+      this.startX,
+      this.startY,
       numberSize / 2 + 3,
       0x242424,
       1
     );
     this.healthObjectBackground = add.circle(
-      0,
-      0,
+      this.startX,
+      this.startY,
       numberSize / 2 + 3,
       0x242424,
       1
     );
+    this.levelObject = add.sprite(this.startX, this.startY, EImageKey.Level);
   }
 
   update() {
@@ -142,7 +171,8 @@ export class Unit {
       this.healthObject &&
       this.gameObject &&
       this.attackObjectBackground &&
-      this.healthObjectBackground
+      this.healthObjectBackground &&
+      this.levelObject
     ) {
       const separation = 20 * this.scale;
       const leftX = this.gameObject.x - separation;
@@ -168,6 +198,13 @@ export class Unit {
       this.healthObjectBackground.y = positionY;
       this.healthObjectBackground.scale = this.scale;
       this.healthObjectBackground.depth = this.depth + 1;
+
+      this.levelObject.x = this.gameObject.x;
+      this.levelObject.y =
+        this.gameObject.y - this.gameObject.displayHeight / 2 - 20;
+      this.levelObject.scale = this.scale * 0.35;
+      this.levelObject.depth = this.depth + 1;
+      this.levelObject.setFrame(this.xp - 1);
     }
 
     if (this.gameObject) {
@@ -185,19 +222,10 @@ export class Unit {
     this.healthObject?.destroy();
     this.attackObjectBackground?.destroy();
     this.healthObjectBackground?.destroy();
+    this.levelObject?.destroy();
   }
 }
 
 export const areUnitsMergable = (unit1: Unit, unit2: Unit): boolean => {
   return unit1.type === unit2.type && unit1.xp < MAX_XP && unit2.xp < MAX_XP;
-};
-
-export const preloadUnitImages = (
-  units: Unit[],
-  load: Phaser.Loader.LoaderPlugin
-) => {
-  uniqBy(
-    units.map((unit) => unit.imageData),
-    (data) => data.key
-  ).map((data) => load.image(data.key, data.path));
 };

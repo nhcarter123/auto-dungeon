@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { preloadUnitImages, Unit, UnitType } from "../units";
+import { MAX_XP, Unit, UnitType } from "../units";
 import moment from "moment";
 import { screenWidth } from "../config";
 import { Field } from "../field";
@@ -88,7 +88,7 @@ export default class Demo extends Phaser.Scene {
   }
 
   preload() {
-    preloadUnitImages(this.units, this.load);
+    this.units.map((unit) => unit.preload(this.load));
   }
 
   create() {
@@ -134,6 +134,8 @@ export default class Demo extends Phaser.Scene {
       ? this.input.mousePointer.y + this.selectedOffsetY
       : this.input.mousePointer.y;
 
+    let unitToMerge: Unit | null = null;
+
     if (this.selected) {
       if (this.selected.gameObject) {
         this.selected.gameObject.x = lerp(
@@ -147,7 +149,7 @@ export default class Demo extends Phaser.Scene {
           0.14
         );
 
-        this.myField.reorderField(mouseX, mouseY, this.selected);
+        unitToMerge = this.myField.reorderField(mouseX, mouseY, this.selected);
         this.myField.positionUnits(0.08, this.selected?.id, mouseX, mouseY);
       }
     } else {
@@ -205,11 +207,21 @@ export default class Demo extends Phaser.Scene {
         this.selected.attackObjectBackground &&
         this.selected.healthObjectBackground
       ) {
-        this.selected.gameObject.depth = this.selected.depth;
-        this.selected.attackObject.depth = this.selected.depth + 2;
-        this.selected.healthObject.depth = this.selected.depth + 2;
-        this.selected.attackObjectBackground.depth = this.selected.depth + 1;
-        this.selected.healthObjectBackground.depth = this.selected.depth + 1;
+        if (unitToMerge) {
+          unitToMerge.xp = Math.min(unitToMerge.xp + this.selected.xp, MAX_XP);
+
+          this.units = this.units.filter(
+            (unit) => unit.id !== this.selected?.id
+          );
+          this.myField.units = this.units;
+          this.selected.delete();
+        } else {
+          this.selected.gameObject.depth = this.selected.depth;
+          this.selected.attackObject.depth = this.selected.depth + 2;
+          this.selected.healthObject.depth = this.selected.depth + 2;
+          this.selected.attackObjectBackground.depth = this.selected.depth + 1;
+          this.selected.healthObjectBackground.depth = this.selected.depth + 1;
+        }
       }
       this.myField.startedHoverTime = moment();
       this.myField.hoveredUnitId = "";

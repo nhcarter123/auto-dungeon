@@ -75,7 +75,11 @@ export class Field {
     }
   }
 
-  reorderField(mouseX: number, mouseY: number, selectedUnit: Unit) {
+  reorderField(
+    mouseX: number,
+    mouseY: number,
+    selectedUnit: Unit
+  ): Unit | null {
     const mouseWithinBox = this.isMouseWithinBox(mouseX, mouseY);
 
     const index = this.units.findIndex((unit) => unit.id === selectedUnit.id);
@@ -103,9 +107,13 @@ export class Field {
           }
 
           this.units = swapUnits(this.units, index, targetIndex);
+        } else if (mergable) {
+          return targetUnit;
         }
       }
     }
+
+    return null;
   }
 
   hoverUnit(mouseX: number, mouseY: number): Unit | null {
