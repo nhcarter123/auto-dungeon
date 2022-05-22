@@ -30,6 +30,7 @@
   },
   "dependencies": {
     "lodash": "^4.17.21",
+    "moment": "^2.29.3",
     "nanoid": "^3.3.4",
     "prettier": "^2.6.2"
   }
