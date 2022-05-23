@@ -11,13 +11,14 @@ export class Button {
 
   constructor(
     add: Phaser.GameObjects.GameObjectFactory,
+    key: EImageKey,
     x: number,
     y: number,
     onClick: Function
   ) {
     this.hovered = false;
     this.gameObject = add
-      .image(x, y, EImageKey.RollButton)
+      .image(x, y, key)
       .setInteractive()
       .on(EMouseEvent.PointerDown, () => this.click())
       .on(EMouseEvent.PointerOver, () => (this.hovered = true))

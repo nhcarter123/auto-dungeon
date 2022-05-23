@@ -21,7 +21,7 @@ export default class Demo extends Phaser.Scene {
   private shop: Shop;
   private rollButton: Button | undefined;
   private sellButton: Button | undefined;
-  private fightButton: Button | undefined;
+  private nextButton: Button | undefined;
   private selected: Good | undefined;
   private selectedOffsetX: number;
   private selectedOffsetY: number;
@@ -44,7 +44,9 @@ export default class Demo extends Phaser.Scene {
   }
 
   preload() {
-    this.load.image(EImageKey.RollButton, "assets/images/roll_button.png");
+    this.load.image(EImageKey.RollButton, "assets/images/button_roll.png");
+    this.load.image(EImageKey.SellButton, "assets/images/button_sell.png");
+    this.load.image(EImageKey.NextButton, "assets/images/button_next.png");
     this.load.image(EImageKey.Swamp, "assets/images/background_swamp.png");
     this.load.image(EImageKey.Skeleton, "assets/images/skeleton.png");
     this.load.image(EImageKey.Ogre, "assets/images/ogre.png");
@@ -58,13 +60,21 @@ export default class Demo extends Phaser.Scene {
   create() {
     this.rollButton = new Button(
       this.add,
+      EImageKey.RollButton,
       150,
       screenHeight - 100,
       this.shop.roll.bind(this.shop)
     );
-    this.sellButton = new Button(this.add, 350, screenHeight - 100, () => {});
-    this.fightButton = new Button(
+    this.sellButton = new Button(
       this.add,
+      EImageKey.SellButton,
+      350,
+      screenHeight - 100,
+      () => {}
+    );
+    this.nextButton = new Button(
+      this.add,
+      EImageKey.NextButton,
       screenWidth - 150,
       screenHeight - 100,
       this.goToFight.bind(this)
@@ -107,7 +117,7 @@ export default class Demo extends Phaser.Scene {
     this.shop.goods.forEach((good) => good.update());
     this.rollButton?.update(!this.selected);
     this.sellButton?.update(showSellButton);
-    this.fightButton?.update(!this.selected);
+    this.nextButton?.update(!this.selected);
 
     const mouseX = this.selected
       ? this.input.mousePointer.x + this.selectedOffsetX

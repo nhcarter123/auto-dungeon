@@ -25,6 +25,8 @@ export interface ImageData {
 
 export enum EImageKey {
   RollButton = "RollButton",
+  SellButton = "SellButton",
+  NextButton = "NextButton",
   Swamp = "Swamp",
   Skeleton = "Skeleton",
   Ogre = "Ogre",
@@ -76,6 +78,7 @@ export class Unit {
     const fontStyle = {
       fontSize: "20px",
       fontFamily: "Verdana",
+      strokeThickness: 1,
       align: "center",
       fixedWidth: numberSize,
       fixedHeight: numberSize,

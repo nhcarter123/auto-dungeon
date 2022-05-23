@@ -57,7 +57,7 @@ export class Item {
           cost: 2,
           imageData: {
             key: EImageKey.RollButton,
-            path: "assets/images/roll_button.png",
+            path: "assets/images/button_roll.png",
             scale: 0.35,
             startingDir: 1,
           },
