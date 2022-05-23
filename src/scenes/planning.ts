@@ -28,7 +28,6 @@ export default class Demo extends Phaser.Scene {
   private mouseClicked: boolean;
   private mouseReleased: boolean;
   private mouseRightClicked: boolean;
-  private mouseRightReleased: boolean;
 
   constructor() {
     super("GameScene");
@@ -42,7 +41,6 @@ export default class Demo extends Phaser.Scene {
     this.mouseClicked = false;
     this.mouseReleased = false;
     this.mouseRightClicked = false;
-    this.mouseRightReleased = false;
   }
 
   preload() {
@@ -91,16 +89,7 @@ export default class Demo extends Phaser.Scene {
         }
       }
     );
-    this.input.on(
-      EMouseEvent.PointerUp,
-      (pointer: { rightButtonReleased: () => any }) => {
-        if (pointer.rightButtonReleased()) {
-          this.mouseRightReleased = true;
-        } else {
-          this.mouseReleased = true;
-        }
-      }
-    );
+    this.input.on(EMouseEvent.PointerUp, () => (this.mouseReleased = true));
   }
 
   update(time: number, delta: number) {
@@ -193,17 +182,6 @@ export default class Demo extends Phaser.Scene {
           );
         }
       }
-    }
-
-    if (this.mouseRightClicked) {
-      this.mouseRightClicked = false;
-
-      // if (hoveredGood) {
-      //   this.field.units = this.field.units.filter(
-      //     (unit) => unit.id !== hoveredGood.id
-      //   );
-      //   hoveredGood.delete();
-      // }
     }
 
     if (this.mouseReleased) {
