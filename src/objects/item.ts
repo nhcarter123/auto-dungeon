@@ -1,0 +1,71 @@
+import Phaser from "phaser";
+import { nanoid } from "nanoid";
+import { lerp } from "../utils";
+import { EImageKey, ImageData } from "./unit";
+
+export enum ItemType {
+  Book = "Book",
+}
+
+interface ItemDefaultData {
+  cost: number;
+  imageData: ImageData;
+}
+
+export class Item {
+  public id: string;
+  public depth: number;
+  public cost: number;
+  public gameObject: Phaser.GameObjects.Image;
+  public scale: number;
+  public scaleMod: number;
+  public imageData: ImageData;
+  public type: ItemType;
+
+  constructor(
+    add: Phaser.GameObjects.GameObjectFactory,
+    x: number,
+    y: number,
+    type: ItemType
+  ) {
+    const { cost, imageData } = this.getDataFromType(type);
+
+    this.imageData = imageData;
+    this.id = nanoid();
+    this.cost = cost;
+    this.type = type;
+    this.depth = 0;
+    this.scale = 1;
+    this.scaleMod = 1;
+    this.gameObject = add.image(x, y, this.imageData.key);
+    this.gameObject.scale = this.scale * this.scaleMod * this.imageData.scale;
+  }
+
+  update() {
+    this.gameObject.scale = lerp(
+      this.gameObject.scale,
+      this.scale * this.scaleMod * this.imageData.scale,
+      0.2
+    );
+  }
+
+  getDataFromType(type: ItemType): ItemDefaultData {
+    switch (type) {
+      case ItemType.Book:
+      default:
+        return {
+          cost: 2,
+          imageData: {
+            key: EImageKey.RollButton,
+            path: "assets/images/roll_button.png",
+            scale: 0.35,
+            startingDir: 1,
+          },
+        };
+    }
+  }
+
+  delete() {
+    this.gameObject?.destroy();
+  }
+}
