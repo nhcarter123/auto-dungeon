@@ -7,8 +7,10 @@ import moment from "moment";
 import { screenHeight, screenWidth } from "../config";
 import { lerp } from "../utils";
 
-enum MouseEvent {
+export enum EMouseEvent {
   PointerDown = "pointerdown",
+  PointerOver = "pointerover",
+  PointerOut = "pointerout",
   PointerUp = "pointerup",
 }
 
@@ -17,7 +19,8 @@ const levelImagePath = "assets/sprites/level/texture.png";
 export default class Demo extends Phaser.Scene {
   private field: Field;
   private shop: Shop;
-  private shopButton: Button | undefined;
+  private rollButton: Button | undefined;
+  private sellButton: Button | undefined;
   private fightButton: Button | undefined;
   private selected: Good | undefined;
   private selectedOffsetX: number;
@@ -55,12 +58,13 @@ export default class Demo extends Phaser.Scene {
   }
 
   create() {
-    this.shopButton = new Button(
+    this.rollButton = new Button(
       this.add,
       150,
       screenHeight - 100,
       this.shop.roll.bind(this.shop)
     );
+    this.sellButton = new Button(this.add, 350, screenHeight - 100, () => {});
     this.fightButton = new Button(
       this.add,
       screenWidth - 150,
@@ -77,10 +81,8 @@ export default class Demo extends Phaser.Scene {
     );
     background.depth = -10;
 
-    // showField(this.opponentsField, this.add);
-
     this.input.on(
-      MouseEvent.PointerDown,
+      EMouseEvent.PointerDown,
       (pointer: { rightButtonDown: () => any }) => {
         if (pointer.rightButtonDown()) {
           this.mouseRightClicked = true;
@@ -90,7 +92,7 @@ export default class Demo extends Phaser.Scene {
       }
     );
     this.input.on(
-      MouseEvent.PointerUp,
+      EMouseEvent.PointerUp,
       (pointer: { rightButtonReleased: () => any }) => {
         if (pointer.rightButtonReleased()) {
           this.mouseRightReleased = true;
@@ -104,10 +106,19 @@ export default class Demo extends Phaser.Scene {
   update(time: number, delta: number) {
     super.update(time, delta);
 
+    const showSellButton =
+      Boolean(this.selected) && !this.shop.contains(this.selected?.id || "");
+
+    if (this.sellButton?.gameObject) {
+      this.sellButton.gameObject.visible = showSellButton;
+    }
+
     this.field.units.forEach((unit) => unit.update());
+    this.field.update();
     this.shop.goods.forEach((good) => good.update());
-    this.shopButton?.update();
-    this.fightButton?.update();
+    this.rollButton?.update(!this.selected);
+    this.sellButton?.update(showSellButton);
+    this.fightButton?.update(!this.selected);
 
     const mouseX = this.selected
       ? this.input.mousePointer.x + this.selectedOffsetX
@@ -117,7 +128,6 @@ export default class Demo extends Phaser.Scene {
       : this.input.mousePointer.y;
 
     let reorderStatus: ReorderStatus = {
-      currentIndex: -1,
       targetIndex: -1,
       mergingUnit: undefined,
     };
@@ -142,13 +152,7 @@ export default class Demo extends Phaser.Scene {
     this.shop.scaleGoods();
     this.field.scaleUnits();
 
-    this.field.positionUnits(
-      0.08,
-      this.selected?.id,
-      Boolean(reorderStatus.mergingUnit),
-      mouseX,
-      mouseY
-    );
+    this.field.positionUnits(0.08, this.selected?.id);
     this.shop.positionGoods(0.08, this.selected?.id);
 
     let hoveredGood: Good | undefined;
@@ -207,8 +211,14 @@ export default class Demo extends Phaser.Scene {
 
       if (this.selected) {
         if (this.selected instanceof Unit) {
-          if (reorderStatus.mergingUnit) {
-            // todo trigger buy from shop
+          if (showSellButton && this.sellButton?.hovered) {
+            this.field.removeUnit(this.selected.id);
+            this.selected.delete();
+          } else if (reorderStatus.mergingUnit) {
+            // buy
+            if (this.shop.contains(this.selected.id)) {
+              this.shop.removeGood(this.selected.id);
+            }
 
             this.field.mergeUnits(reorderStatus.mergingUnit, this.selected);
           } else {
@@ -217,10 +227,6 @@ export default class Demo extends Phaser.Scene {
             if (this.shop.contains(this.selected.id)) {
               // buy
               if (reorderStatus.targetIndex >= 0) {
-                this.field.swapUnits(
-                  reorderStatus.currentIndex,
-                  reorderStatus.targetIndex
-                );
                 this.shop.removeGood(this.selected.id);
               } else {
                 // return to shop
