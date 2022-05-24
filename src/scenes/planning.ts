@@ -1,11 +1,11 @@
 import Phaser from "phaser";
 import { EImageKey, Unit } from "../objects/unit";
-import { Field, ReorderStatus } from "../objects/field";
-import { Good, Shop } from "../objects/shop";
+import { Good, Shop } from "../objects/fields/shop";
 import { Button } from "../objects/button";
 import moment from "moment";
-import { screenHeight, screenWidth } from "../config";
+import { EScene, screenHeight, screenWidth } from "../config";
 import { lerp } from "../utils";
+import { PlanningField, ReorderStatus } from "../objects/fields/planningField";
 
 export enum EMouseEvent {
   PointerDown = "pointerdown",
@@ -16,28 +16,28 @@ export enum EMouseEvent {
 
 const levelImagePath = "assets/sprites/level/texture.png";
 
-export default class Demo extends Phaser.Scene {
-  private field: Field;
+export default class Planning extends Phaser.Scene {
+  private field: PlanningField;
   private shop: Shop;
   private rollButton: Button | undefined;
   private sellButton: Button | undefined;
   private nextButton: Button | undefined;
   private selected: Good | undefined;
-  private selectedOffsetX: number;
-  private selectedOffsetY: number;
+  // private selectedOffsetX: number;
+  // private selectedOffsetY: number;
   private mouseClicked: boolean;
   private mouseReleased: boolean;
   private mouseRightClicked: boolean;
 
   constructor() {
-    super("GameScene");
+    super(EScene.Planning);
 
     const halfScreenWidth = screenWidth / 2;
 
-    this.field = new Field(halfScreenWidth, 250, halfScreenWidth - 50);
+    this.field = new PlanningField(halfScreenWidth, 250, halfScreenWidth - 50);
     this.shop = new Shop(halfScreenWidth, 650, halfScreenWidth - 50);
-    this.selectedOffsetX = 0;
-    this.selectedOffsetY = 0;
+    // this.selectedOffsetX = 0;
+    // this.selectedOffsetY = 0;
     this.mouseClicked = false;
     this.mouseReleased = false;
     this.mouseRightClicked = false;
@@ -77,7 +77,7 @@ export default class Demo extends Phaser.Scene {
       EImageKey.NextButton,
       screenWidth - 150,
       screenHeight - 100,
-      this.goToFight.bind(this)
+      this.goToBattle.bind(this)
     );
     this.field.create(this.add);
     this.shop.create(this.add);
@@ -112,18 +112,22 @@ export default class Demo extends Phaser.Scene {
       this.sellButton.gameObject.visible = showSellButton;
     }
 
-    this.field.units.forEach((unit) => unit.update());
+    this.field.contents.forEach((content) => content.update());
     this.field.update();
-    this.shop.goods.forEach((good) => good.update());
+    this.shop.contents.forEach((content) => content.update());
     this.rollButton?.update(!this.selected);
     this.sellButton?.update(showSellButton);
     this.nextButton?.update(!this.selected);
 
+    // unsure if I like this
+    // this.selectedOffsetX = lerp(this.selectedOffsetX, 0, 0.2);
+    // this.selectedOffsetY = lerp(this.selectedOffsetY, 0, 0.2);
+
     const mouseX = this.selected
-      ? this.input.mousePointer.x + this.selectedOffsetX
+      ? this.input.mousePointer.x //+ this.selectedOffsetX
       : this.input.mousePointer.x;
     const mouseY = this.selected
-      ? this.input.mousePointer.y + this.selectedOffsetY
+      ? this.input.mousePointer.y //+ this.selectedOffsetY
       : this.input.mousePointer.y;
 
     let reorderStatus: ReorderStatus = {
@@ -148,45 +152,45 @@ export default class Demo extends Phaser.Scene {
       }
     }
 
-    this.shop.scaleGoods();
-    this.field.scaleUnits();
+    this.shop.scaleContent();
+    this.field.scaleContent();
 
-    this.field.positionUnits(0.08, this.selected?.id);
-    this.shop.positionGoods(0.08, this.selected?.id);
+    this.field.positionContent(0.08, this.selected?.id);
+    this.shop.positionContent(0.08, this.selected?.id);
 
-    let hoveredGood: Good | undefined;
+    let hovered: Good | undefined;
 
     if (!this.selected || reorderStatus.mergingUnit) {
-      hoveredGood = this.field.hoverUnit(mouseX, mouseY);
+      hovered = this.field.hoverContent(mouseX, mouseY);
 
-      if (!hoveredGood) {
-        hoveredGood = this.shop.hoverGoods(mouseX, mouseY);
+      if (!hovered) {
+        hovered = this.shop.hoverContent(mouseX, mouseY);
       }
     }
 
-    if (hoveredGood && hoveredGood.id !== this.selected?.id) {
-      hoveredGood.scaleMod = 1.1;
+    if (hovered && hovered.id !== this.selected?.id) {
+      hovered.scaleMod = 1.1;
     }
 
     if (this.mouseClicked) {
       this.mouseClicked = false;
 
-      this.selected = hoveredGood;
+      this.selected = hovered;
 
       if (this.selected) {
         this.selected.depth = 100;
-        this.selectedOffsetX =
-          this.selected.gameObject.x - this.input.mousePointer.x;
-        this.selectedOffsetY =
-          this.selected.gameObject.y - this.input.mousePointer.y;
+        // this.selectedOffsetX =
+        //   this.selected.gameObject.x - this.input.mousePointer.x;
+        // this.selectedOffsetY =
+        //   this.selected.gameObject.y - this.input.mousePointer.y;
 
         if (
           this.shop.contains(this.selected.id) &&
           this.selected instanceof Unit
         ) {
           // this.field.units.push(this.selected);
-          this.field.units.splice(
-            Math.ceil(this.field.units.length / 2),
+          this.field.contents.splice(
+            Math.ceil(this.field.contents.length / 2),
             0,
             this.selected
           );
@@ -200,12 +204,12 @@ export default class Demo extends Phaser.Scene {
       if (this.selected) {
         if (this.selected instanceof Unit) {
           if (showSellButton && this.sellButton?.hovered) {
-            this.field.removeUnit(this.selected.id);
+            this.field.removeContent(this.selected.id);
             this.selected.delete();
           } else if (reorderStatus.mergingUnit) {
             // buy
             if (this.shop.contains(this.selected.id)) {
-              this.shop.removeGood(this.selected.id);
+              this.shop.removeContent(this.selected.id);
             }
 
             this.field.mergeUnits(reorderStatus.mergingUnit, this.selected);
@@ -215,10 +219,10 @@ export default class Demo extends Phaser.Scene {
             if (this.shop.contains(this.selected.id)) {
               // buy
               if (reorderStatus.targetIndex >= 0) {
-                this.shop.removeGood(this.selected.id);
+                this.shop.removeContent(this.selected.id);
               } else {
                 // return to shop
-                this.field.removeUnit(this.selected.id);
+                this.field.removeContent(this.selected.id);
               }
             }
           }
@@ -230,5 +234,7 @@ export default class Demo extends Phaser.Scene {
     }
   }
 
-  goToFight() {}
+  goToBattle() {
+    this.scene.switch(EScene.Battle);
+  }
 }

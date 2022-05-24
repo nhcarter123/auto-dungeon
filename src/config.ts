@@ -3,6 +3,11 @@ import Phaser from "phaser";
 export const screenWidth = 1600;
 export const screenHeight = 900;
 
+export enum EScene {
+  Planning = "Planning",
+  Battle = "Battle",
+}
+
 export default {
   type: Phaser.AUTO,
   parent: "game",
