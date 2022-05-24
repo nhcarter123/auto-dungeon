@@ -1,4 +1,4 @@
-import { MAX_XP, Unit } from "../unit";
+import { MAX_XP, Unit } from "../units/unit";
 import moment from "moment";
 import { Field } from "./field";
 

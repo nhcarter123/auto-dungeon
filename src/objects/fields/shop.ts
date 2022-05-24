@@ -1,7 +1,8 @@
-import { Unit, getRandomUnitType } from "../unit";
+import { Unit, getRandomUnitType } from "../units/unit";
 import Phaser from "phaser";
 import { Item } from "../item";
 import { Field } from "./field";
+import { createUnitFromType } from "../../scenes/battle";
 
 export type Good = Unit | Item;
 
@@ -25,11 +26,11 @@ export class Shop extends Field<Good> {
   generateGoods() {
     if (this.add) {
       this.contents = [
-        new Unit(this.add, getRandomUnitType()),
-        new Unit(this.add, getRandomUnitType()),
-        new Unit(this.add, getRandomUnitType()),
-        new Unit(this.add, getRandomUnitType()),
-        new Unit(this.add, getRandomUnitType()),
+        createUnitFromType(this.add, getRandomUnitType()),
+        createUnitFromType(this.add, getRandomUnitType()),
+        createUnitFromType(this.add, getRandomUnitType()),
+        createUnitFromType(this.add, getRandomUnitType()),
+        createUnitFromType(this.add, getRandomUnitType()),
       ];
 
       this.positionContent(1, undefined);

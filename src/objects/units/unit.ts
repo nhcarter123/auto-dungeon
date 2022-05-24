@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import { nanoid } from "nanoid";
-import { lerp } from "../utils";
+import { lerp } from "../../utils";
 
 export const MAX_XP = 5;
 
@@ -10,14 +10,8 @@ export enum EUnitType {
   Golem = "Golem",
 }
 
-interface UnitDefaultData {
-  attack: number;
-  health: number;
-  imageData: ImageData;
-}
-
-export interface ImageData {
-  key: string;
+export interface IImageData {
+  key: EImageKey;
   path: string;
   scale: number;
   startingDir: number;
@@ -42,7 +36,7 @@ export class Unit {
   public health: number;
   public type: EUnitType;
   public facingDir: number;
-  public imageData: ImageData;
+  public imageData: IImageData;
   public gameObject: Phaser.GameObjects.Image;
   public attackObject: Phaser.GameObjects.Text;
   public attackObjectBackground: Phaser.GameObjects.Arc;
@@ -54,9 +48,14 @@ export class Unit {
   public scale: number;
   public scaleMod: number;
 
-  constructor(add: Phaser.GameObjects.GameObjectFactory, type: EUnitType) {
-    const { attack, health, imageData } = this.getDataFromType(type);
-
+  constructor(
+    add: Phaser.GameObjects.GameObjectFactory,
+    type: EUnitType,
+    attack: number,
+    health: number,
+    imageData: IImageData,
+    flipX?: boolean
+  ) {
     const numberSize = 24;
 
     this.id = nanoid();
@@ -64,7 +63,7 @@ export class Unit {
     this.startY = 0;
     this.attack = attack;
     this.health = health;
-    this.facingDir = 1;
+    this.facingDir = flipX ? -1 : 1;
     this.imageData = imageData;
     this.type = type;
     this.xp = 1;
@@ -164,45 +163,6 @@ export class Unit {
     this.levelObject.scale = scale * 0.35;
     this.levelObject.depth = this.depth + 1;
     this.levelObject.setFrame(this.xp - 1);
-  }
-
-  getDataFromType(type: EUnitType): UnitDefaultData {
-    switch (type) {
-      case EUnitType.Ogre:
-        return {
-          attack: 1,
-          health: 2,
-          imageData: {
-            key: EImageKey.Ogre,
-            path: "assets/images/ogre.png",
-            scale: 0.35,
-            startingDir: -1,
-          },
-        };
-      case EUnitType.Golem:
-        return {
-          attack: 1,
-          health: 5,
-          imageData: {
-            key: EImageKey.Golem,
-            path: "assets/images/golem.png",
-            scale: 0.2,
-            startingDir: -1,
-          },
-        };
-      case EUnitType.Skeleton:
-      default:
-        return {
-          attack: 2,
-          health: 1,
-          imageData: {
-            key: EImageKey.Skeleton,
-            path: "assets/images/skeleton.png",
-            scale: 0.35,
-            startingDir: 1,
-          },
-        };
-    }
   }
 
   isMergableWith(targetUnit: Unit): boolean {

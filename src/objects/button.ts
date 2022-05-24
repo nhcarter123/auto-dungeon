@@ -1,4 +1,4 @@
-import { EImageKey } from "./unit";
+import { EImageKey } from "./units/unit";
 import { lerp } from "../utils";
 import Phaser from "phaser";
 import { EMouseEvent } from "../scenes/planning";

@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { EImageKey, Unit } from "../objects/unit";
+import { EImageKey, Unit } from "../objects/units/unit";
 import { Good, Shop } from "../objects/fields/shop";
 import { Button } from "../objects/button";
 import moment from "moment";
@@ -14,8 +14,6 @@ export enum EMouseEvent {
   PointerUp = "pointerup",
 }
 
-const levelImagePath = "assets/sprites/level/texture.png";
-
 export default class Planning extends Phaser.Scene {
   private field: PlanningField;
   private shop: Shop;
@@ -27,7 +25,6 @@ export default class Planning extends Phaser.Scene {
   // private selectedOffsetY: number;
   private mouseClicked: boolean;
   private mouseReleased: boolean;
-  private mouseRightClicked: boolean;
 
   constructor() {
     super(EScene.Planning);
@@ -40,7 +37,6 @@ export default class Planning extends Phaser.Scene {
     // this.selectedOffsetY = 0;
     this.mouseClicked = false;
     this.mouseReleased = false;
-    this.mouseRightClicked = false;
   }
 
   preload() {
@@ -51,7 +47,7 @@ export default class Planning extends Phaser.Scene {
     this.load.image(EImageKey.Skeleton, "assets/images/skeleton.png");
     this.load.image(EImageKey.Ogre, "assets/images/ogre.png");
     this.load.image(EImageKey.Golem, "assets/images/golem.png");
-    this.load.spritesheet(EImageKey.Level, levelImagePath, {
+    this.load.spritesheet(EImageKey.Level, "assets/sprites/level/texture.png", {
       frameWidth: 170,
       frameHeight: 124,
     });
@@ -89,16 +85,7 @@ export default class Planning extends Phaser.Scene {
     );
     background.depth = -10;
 
-    this.input.on(
-      EMouseEvent.PointerDown,
-      (pointer: { rightButtonDown: () => any }) => {
-        if (pointer.rightButtonDown()) {
-          this.mouseRightClicked = true;
-        } else {
-          this.mouseClicked = true;
-        }
-      }
-    );
+    this.input.on(EMouseEvent.PointerDown, () => (this.mouseClicked = true));
     this.input.on(EMouseEvent.PointerUp, () => (this.mouseReleased = true));
   }
 

@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 import { nanoid } from "nanoid";
 import { lerp } from "../utils";
-import { EImageKey, ImageData } from "./unit";
+import { EImageKey, IImageData } from "./units/unit";
 
 export enum ItemType {
   Book = "Book",
@@ -9,7 +9,7 @@ export enum ItemType {
 
 interface ItemDefaultData {
   cost: number;
-  imageData: ImageData;
+  imageData: IImageData;
 }
 
 export class Item {
@@ -19,7 +19,7 @@ export class Item {
   public gameObject: Phaser.GameObjects.Image;
   public scale: number;
   public scaleMod: number;
-  public imageData: ImageData;
+  public imageData: IImageData;
   public type: ItemType;
 
   constructor(
