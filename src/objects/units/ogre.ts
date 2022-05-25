@@ -10,6 +10,6 @@ export class Ogre extends Unit {
       startingDir: -1,
     };
 
-    super(add, EUnitType.Ogre, 1, 2, imageData, flipX);
+    super(add, EUnitType.Ogre, 1, 3, imageData, flipX);
   }
 }

@@ -10,6 +10,6 @@ export class Golem extends Unit {
       startingDir: -1,
     };
 
-    super(add, EUnitType.Golem, 1, 2, imageData, flipX);
+    super(add, EUnitType.Golem, 1, 5, imageData, flipX);
   }
 }

@@ -10,6 +10,6 @@ export class Skeleton extends Unit {
       startingDir: 1,
     };
 
-    super(add, EUnitType.Skeleton, 1, 2, imageData, flipX);
+    super(add, EUnitType.Skeleton, 2, 1, imageData, flipX);
   }
 }
