@@ -11,8 +11,9 @@ import { Skeleton } from "../objects/units/skeleton";
 import { Ogre } from "../objects/units/ogre";
 import { Golem } from "../objects/units/golem";
 
-const EVENT_DELAY = 120;
-const EVENT_DURATION = 180;
+const multi = 2;
+const EVENT_DELAY = 60 / multi;
+const EVENT_DURATION = 180 / multi;
 
 export enum EEventType {
   Fight = "Fight",
@@ -59,12 +60,14 @@ export default class Battle extends Phaser.Scene {
     this.myField = new Battlefield(
       halfScreenWidth - halfScreenWidth / 2 - 25,
       halfScreenHeight,
-      halfScreenWidth - 100
+      halfScreenWidth - 100,
+      1
     );
     this.opponentsField = new Battlefield(
       halfScreenWidth + halfScreenWidth / 2 + 25,
       halfScreenHeight,
-      halfScreenWidth - 100
+      halfScreenWidth - 100,
+      -1
     );
   }
 
@@ -107,7 +110,12 @@ export default class Battle extends Phaser.Scene {
       createUnitFromType(this.add, getRandomUnitType(), true),
       createUnitFromType(this.add, getRandomUnitType(), true),
       createUnitFromType(this.add, getRandomUnitType(), true),
+      createUnitFromType(this.add, getRandomUnitType(), true),
+      createUnitFromType(this.add, getRandomUnitType(), true),
     ];
+
+    this.myField.positionContent(1);
+    this.opponentsField.positionContent(1);
   }
 
   update(time: number, delta: number) {
@@ -118,6 +126,19 @@ export default class Battle extends Phaser.Scene {
 
     this.myField.scaleContent();
     this.opponentsField.scaleContent();
+
+    if (!this.myField.contents.length && !this.opponentsField.contents.length) {
+      // console.log("Draw");
+      return;
+    }
+    if (!this.myField.contents.length) {
+      // console.log("I lost");
+      return;
+    }
+    if (!this.opponentsField.contents.length) {
+      // console.log("They lost");
+      return;
+    }
 
     // trigger battle-start events
 
@@ -139,15 +160,16 @@ export default class Battle extends Phaser.Scene {
         this.durationStep += 1;
       }
     } else {
-      this.myField.positionContent(0.08);
-      this.opponentsField.positionContent(0.08);
+      // this leads to some problems.. can we run this always somehow?
+      this.myField.positionContent(0.07 * multi);
+      this.opponentsField.positionContent(0.07 * multi);
     }
 
     this.delayStep += 1;
   }
 
   createFrontFightEvent() {
-    const myFirstUnit = this.myField.contents[this.myField.contents.length - 1];
+    const myFirstUnit = this.myField.contents[0];
     const theirFirstUnit = this.opponentsField.contents[0];
     this.eventQueue.push({
       type: EEventType.Fight,
@@ -158,24 +180,37 @@ export default class Battle extends Phaser.Scene {
   performEvent() {
     if (this.currentEvent) {
       const percentage = this.durationStep / EVENT_DURATION;
+      const hitTime = Math.round(EVENT_DURATION * 0.4);
 
       switch (this.currentEvent.type) {
         case EEventType.Fight:
           const leftUnit = this.currentEvent.affectedUnits[0];
           const rightUnit = this.currentEvent.affectedUnits[1];
 
-          const doesLeftUnitSurvive = Boolean(
-            leftUnit.health - rightUnit.attack
-          );
-          const doesRightUnitSurvive = Boolean(
-            rightUnit.health - leftUnit.attack
-          );
+          let doesLeftUnitSurvive,
+            doesRightUnitSurvive = false;
+
+          if (this.durationStep === hitTime) {
+            leftUnit.health -= rightUnit.attack;
+            rightUnit.health -= leftUnit.attack;
+          }
+
+          if (this.durationStep >= hitTime) {
+            doesLeftUnitSurvive = leftUnit.health > 0;
+            doesRightUnitSurvive = rightUnit.health > 0;
+          } else {
+            doesLeftUnitSurvive = leftUnit.health - rightUnit.attack > 0;
+            doesRightUnitSurvive = rightUnit.health - leftUnit.attack > 0;
+          }
+
           // console.log(doesLeftUnitSurvive);
           // console.log(doesRightUnitSurvive);
 
           if (percentage === 0) {
             leftUnit.startX = leftUnit.gameObject.x;
+            leftUnit.startY = leftUnit.gameObject.y;
             rightUnit.startX = rightUnit.gameObject.x;
+            rightUnit.startY = rightUnit.gameObject.y;
           }
 
           const startAngle = 0;
@@ -203,6 +238,22 @@ export default class Battle extends Phaser.Scene {
             rightUnit.gameObject.rotation = -targetAngle - angleOffset;
           }
 
+          const startAngle4 = 0.4;
+          const finishAngle4 = 1;
+
+          if (percentage >= startAngle4 && percentage <= finishAngle4) {
+            const angleOffset =
+              (14 * (targetAngle2 * (percentage - startAngle4))) /
+              (finishAngle4 - startAngle4);
+
+            if (!doesLeftUnitSurvive) {
+              leftUnit.gameObject.rotation = targetAngle2 - angleOffset;
+            }
+            if (!doesRightUnitSurvive) {
+              rightUnit.gameObject.rotation = -targetAngle2 + angleOffset;
+            }
+          }
+
           const startAngle3 = 0.6;
           const finishAngle3 = 0.8;
           const targetAngle3 = 0;
@@ -212,8 +263,12 @@ export default class Battle extends Phaser.Scene {
               ((targetAngle3 + targetAngle2) * (percentage - startAngle3)) /
               (finishAngle3 - startAngle3);
 
-            leftUnit.gameObject.rotation = targetAngle2 - angleOffset;
-            rightUnit.gameObject.rotation = -targetAngle2 + angleOffset;
+            if (doesLeftUnitSurvive) {
+              leftUnit.gameObject.rotation = targetAngle2 - angleOffset;
+            }
+            if (doesRightUnitSurvive) {
+              rightUnit.gameObject.rotation = -targetAngle2 + angleOffset;
+            }
           }
 
           const startMove0 = 0;
@@ -254,10 +309,14 @@ export default class Battle extends Phaser.Scene {
                   )
               );
 
-            leftUnit.gameObject.x =
-              leftUnit.startX + pullBackDist + moveDist - movement;
-            rightUnit.gameObject.x =
-              rightUnit.startX - pullBackDist - moveDist + movement;
+            if (doesLeftUnitSurvive) {
+              leftUnit.gameObject.x =
+                leftUnit.startX + pullBackDist + moveDist - movement;
+            }
+            if (doesRightUnitSurvive) {
+              rightUnit.gameObject.x =
+                rightUnit.startX - pullBackDist - moveDist + movement;
+            }
           }
 
           const startMove3 = 0.8;
@@ -271,10 +330,46 @@ export default class Battle extends Phaser.Scene {
               ) *
               (moveDist + pullBackDist);
 
-            leftUnit.gameObject.x =
-              leftUnit.startX + pullBackDist + moveDist - movement;
-            rightUnit.gameObject.x =
-              rightUnit.startX - pullBackDist - moveDist + movement;
+            if (doesLeftUnitSurvive) {
+              leftUnit.gameObject.x =
+                leftUnit.startX + pullBackDist + moveDist - movement;
+            }
+            if (doesRightUnitSurvive) {
+              rightUnit.gameObject.x =
+                rightUnit.startX - pullBackDist - moveDist + movement;
+            }
+          }
+
+          const startMove4 = 0.4;
+          const finishMove4 = 1;
+
+          if (percentage >= startMove4 && percentage <= finishMove4) {
+            const movement =
+              (1000 * (percentage - startMove4)) / (finishMove4 - startMove4);
+
+            if (!doesLeftUnitSurvive) {
+              leftUnit.gameObject.x =
+                leftUnit.startX + pullBackDist + moveDist - movement;
+              leftUnit.gameObject.y = leftUnit.startY - movement / 4;
+            }
+            if (!doesRightUnitSurvive) {
+              rightUnit.gameObject.x =
+                rightUnit.startX - pullBackDist - moveDist + movement;
+              rightUnit.gameObject.y = rightUnit.startY - movement / 4;
+            }
+          }
+
+          if (percentage === 1) {
+            if (!doesLeftUnitSurvive) {
+              this.myField.removeContent(leftUnit.id);
+              leftUnit.delete();
+            }
+            if (!doesRightUnitSurvive) {
+              this.opponentsField.removeContent(rightUnit.id);
+              rightUnit.delete();
+            }
+
+            this.currentEvent = undefined;
           }
 
           // leftUnit.gameObject.x = screenWidth / 2 - percentage * 100;
