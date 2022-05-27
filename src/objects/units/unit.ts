@@ -1,6 +1,8 @@
 import Phaser from "phaser";
 import { nanoid } from "nanoid";
 import { lerp } from "../../utils";
+import { IEvent } from "../../scenes/battle";
+import { Battlefield } from "../fields/battlefield";
 
 export const MAX_XP = 5;
 
@@ -171,6 +173,13 @@ export class Unit {
       this.xp < MAX_XP &&
       targetUnit.xp < MAX_XP
     );
+  }
+
+  createDeathEvent(
+    myField: Battlefield,
+    opponentsField: Battlefield
+  ): IEvent | undefined {
+    return;
   }
 
   delete() {

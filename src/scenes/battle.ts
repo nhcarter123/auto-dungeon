@@ -11,17 +11,18 @@ import { Skeleton } from "../objects/units/skeleton";
 import { Ogre } from "../objects/units/ogre";
 import { Golem } from "../objects/units/golem";
 
-const multi = 2;
-const EVENT_DELAY = 60 / multi;
-const EVENT_DURATION = 180 / multi;
+const fastForward = 1;
+const EVENT_DELAY = 60;
 
 export enum EEventType {
   Fight = "Fight",
+  Buff = "Buff",
 }
 
 export interface IEvent {
   type: EEventType;
   affectedUnits: Unit[];
+  duration: number;
 }
 
 export const createUnitFromType = (
@@ -142,7 +143,7 @@ export default class Battle extends Phaser.Scene {
 
     // trigger battle-start events
 
-    if (this.delayStep > EVENT_DELAY) {
+    if (this.delayStep > EVENT_DELAY / fastForward) {
       if (!this.currentEvent) {
         // trigger pre-combat events
 
@@ -152,17 +153,19 @@ export default class Battle extends Phaser.Scene {
         this.currentEvent = this.eventQueue.shift();
       }
 
-      if (this.durationStep > EVENT_DURATION) {
-        this.delayStep = 0;
-        this.durationStep = 0;
-      } else {
-        this.performEvent();
-        this.durationStep += 1;
+      if (this.currentEvent) {
+        if (this.durationStep > this.currentEvent.duration) {
+          this.delayStep = 0;
+          this.durationStep = 0;
+        } else {
+          this.performEvent();
+          this.durationStep += 1;
+        }
       }
     } else {
       // this leads to some problems.. can we run this always somehow?
-      this.myField.positionContent(0.07 * multi);
-      this.opponentsField.positionContent(0.07 * multi);
+      this.myField.positionContent(0.07 * fastForward);
+      this.opponentsField.positionContent(0.07 * fastForward);
     }
 
     this.delayStep += 1;
@@ -174,13 +177,14 @@ export default class Battle extends Phaser.Scene {
     this.eventQueue.push({
       type: EEventType.Fight,
       affectedUnits: [myFirstUnit, theirFirstUnit],
+      duration: 100 / fastForward,
     });
   }
 
   performEvent() {
     if (this.currentEvent) {
-      const percentage = this.durationStep / EVENT_DURATION;
-      const hitTime = Math.round(EVENT_DURATION * 0.4);
+      const pct = this.durationStep / this.currentEvent.duration;
+      const hitTime = Math.round(this.currentEvent.duration * 0.4);
 
       switch (this.currentEvent.type) {
         case EEventType.Fight:
@@ -203,181 +207,181 @@ export default class Battle extends Phaser.Scene {
             doesRightUnitSurvive = rightUnit.health - leftUnit.attack > 0;
           }
 
-          // console.log(doesLeftUnitSurvive);
-          // console.log(doesRightUnitSurvive);
-
-          if (percentage === 0) {
+          if (pct === 0) {
             leftUnit.startX = leftUnit.gameObject.x;
             leftUnit.startY = leftUnit.gameObject.y;
             rightUnit.startX = rightUnit.gameObject.x;
             rightUnit.startY = rightUnit.gameObject.y;
           }
 
-          const startAngle = 0;
-          const finishAngle = 0.2;
-          const targetAngle = -0.4;
-          if (percentage >= startAngle && percentage <= finishAngle) {
-            const angleOffset =
-              (targetAngle * (percentage - startAngle)) /
-              (finishAngle - startAngle);
-
-            leftUnit.gameObject.rotation = angleOffset;
-            rightUnit.gameObject.rotation = -angleOffset;
+          const fAngle1 = -0.4;
+          const rot = rotateTowardAngle(0, 0.2, 0, fAngle1, pct);
+          if (rot) {
+            leftUnit.gameObject.rotation = rot;
+            rightUnit.gameObject.rotation = -rot;
           }
 
-          const startAngle2 = 0.3;
-          const finishAngle2 = 0.4;
-          const targetAngle2 = 0.7;
-
-          if (percentage >= startAngle2 && percentage <= finishAngle2) {
-            const angleOffset =
-              ((targetAngle2 - targetAngle) * (percentage - startAngle2)) /
-              (finishAngle2 - startAngle2);
-
-            leftUnit.gameObject.rotation = targetAngle + angleOffset;
-            rightUnit.gameObject.rotation = -targetAngle - angleOffset;
+          const fAngle2 = 0.7;
+          const rot2 = rotateTowardAngle(0.3, 0.4, fAngle1, fAngle2, pct);
+          if (rot2) {
+            leftUnit.gameObject.rotation = rot2;
+            rightUnit.gameObject.rotation = -rot2;
           }
 
-          const startAngle4 = 0.4;
-          const finishAngle4 = 1;
+          const rot3 = rotateTowardAngle(0.6, 0.8, fAngle2, 0, pct);
+          const rot4 = rotateTowardAngle(0.4, 1, fAngle2, -8, pct);
 
-          if (percentage >= startAngle4 && percentage <= finishAngle4) {
-            const angleOffset =
-              (14 * (targetAngle2 * (percentage - startAngle4))) /
-              (finishAngle4 - startAngle4);
-
-            if (!doesLeftUnitSurvive) {
-              leftUnit.gameObject.rotation = targetAngle2 - angleOffset;
+          if (doesLeftUnitSurvive) {
+            if (rot3) {
+              leftUnit.gameObject.rotation = rot3;
             }
-            if (!doesRightUnitSurvive) {
-              rightUnit.gameObject.rotation = -targetAngle2 + angleOffset;
-            }
+          } else if (rot4) {
+            leftUnit.gameObject.rotation = rot4;
           }
 
-          const startAngle3 = 0.6;
-          const finishAngle3 = 0.8;
-          const targetAngle3 = 0;
-
-          if (percentage >= startAngle3 && percentage <= finishAngle3) {
-            const angleOffset =
-              ((targetAngle3 + targetAngle2) * (percentage - startAngle3)) /
-              (finishAngle3 - startAngle3);
-
-            if (doesLeftUnitSurvive) {
-              leftUnit.gameObject.rotation = targetAngle2 - angleOffset;
+          if (doesRightUnitSurvive) {
+            if (rot3) {
+              rightUnit.gameObject.rotation = -rot3;
             }
-            if (doesRightUnitSurvive) {
-              rightUnit.gameObject.rotation = -targetAngle2 + angleOffset;
-            }
+          } else if (rot4) {
+            rightUnit.gameObject.rotation = -rot4;
           }
 
-          const startMove0 = 0;
-          const finishMove0 = 0.3;
-          const pullBackDist = -40;
-          if (percentage >= startMove0 && percentage <= finishMove0) {
-            const movement =
-              ((percentage - startMove0) / (finishMove0 - startMove0)) *
-              pullBackDist;
+          const backupDist = -40;
 
-            leftUnit.gameObject.x = leftUnit.startX + movement;
-            rightUnit.gameObject.x = rightUnit.startX - movement;
+          const movement1 = moveTowardsNumber(0, 0.3, 0, backupDist, pct);
+          if (movement1) {
+            leftUnit.gameObject.x = leftUnit.startX + movement1;
+            rightUnit.gameObject.x = rightUnit.startX - movement1;
           }
 
-          const startMove = 0.3;
-          const finishMove = 0.4;
           const moveDist = 150;
-          if (percentage >= startMove && percentage <= finishMove) {
-            const movement =
-              pullBackDist +
-              ((percentage - startMove) / (finishMove - startMove)) * moveDist;
-
-            leftUnit.gameObject.x = leftUnit.startX + movement;
-            rightUnit.gameObject.x = rightUnit.startX - movement;
+          const movement2 = moveTowardsNumber(
+            0.3,
+            0.4,
+            backupDist,
+            moveDist,
+            pct
+          );
+          if (movement2) {
+            leftUnit.gameObject.x = leftUnit.startX + movement2;
+            rightUnit.gameObject.x = rightUnit.startX - movement2;
           }
 
           const startMove2 = 0.4;
           const finishMove2 = 0.65;
 
-          if (percentage >= startMove2 && percentage <= finishMove2) {
+          if (pct >= startMove2 && pct <= finishMove2) {
             const movement =
               35 *
               Math.sin(
                 Math.PI *
-                  Math.pow(
-                    (percentage - startMove2) / (finishMove2 - startMove2),
-                    0.7
-                  )
+                  Math.pow((pct - startMove2) / (finishMove2 - startMove2), 0.7)
               );
 
             if (doesLeftUnitSurvive) {
               leftUnit.gameObject.x =
-                leftUnit.startX + pullBackDist + moveDist - movement;
+                leftUnit.startX + backupDist + moveDist - movement;
             }
             if (doesRightUnitSurvive) {
               rightUnit.gameObject.x =
-                rightUnit.startX - pullBackDist - moveDist + movement;
+                rightUnit.startX - backupDist - moveDist + movement;
             }
           }
 
           const startMove3 = 0.8;
           const finishMove3 = 1;
 
-          if (percentage >= startMove3 && percentage <= finishMove3) {
+          if (pct >= startMove3 && pct <= finishMove3) {
             const movement =
               Math.sin(
                 (Math.PI / 2) *
-                  ((percentage - startMove3) / (finishMove3 - startMove3))
+                  ((pct - startMove3) / (finishMove3 - startMove3))
               ) *
-              (moveDist + pullBackDist);
+              (moveDist + backupDist);
 
             if (doesLeftUnitSurvive) {
               leftUnit.gameObject.x =
-                leftUnit.startX + pullBackDist + moveDist - movement;
+                leftUnit.startX + backupDist + moveDist - movement;
             }
             if (doesRightUnitSurvive) {
               rightUnit.gameObject.x =
-                rightUnit.startX - pullBackDist - moveDist + movement;
+                rightUnit.startX - backupDist - moveDist + movement;
             }
           }
 
-          const startMove4 = 0.4;
-          const finishMove4 = 1;
-
-          if (percentage >= startMove4 && percentage <= finishMove4) {
-            const movement =
-              (1000 * (percentage - startMove4)) / (finishMove4 - startMove4);
-
-            if (!doesLeftUnitSurvive) {
-              leftUnit.gameObject.x =
-                leftUnit.startX + pullBackDist + moveDist - movement;
-              leftUnit.gameObject.y = leftUnit.startY - movement / 4;
-            }
-            if (!doesRightUnitSurvive) {
-              rightUnit.gameObject.x =
-                rightUnit.startX - pullBackDist - moveDist + movement;
-              rightUnit.gameObject.y = rightUnit.startY - movement / 4;
-            }
+          const movement3 = moveTowardsNumber(0.4, 1, 0, 1000, pct);
+          if (!doesLeftUnitSurvive && movement3) {
+            leftUnit.gameObject.x =
+              leftUnit.startX + backupDist + moveDist - movement3;
+            leftUnit.gameObject.y = leftUnit.startY - movement3 / 4;
+          }
+          if (!doesRightUnitSurvive && movement3) {
+            rightUnit.gameObject.x =
+              rightUnit.startX - backupDist - moveDist + movement3;
+            rightUnit.gameObject.y = rightUnit.startY - movement3 / 4;
           }
 
-          if (percentage === 1) {
+          if (pct === 1) {
             if (!doesLeftUnitSurvive) {
-              this.myField.removeContent(leftUnit.id);
-              leftUnit.delete();
+              this.handleDeath(leftUnit, this.myField);
             }
             if (!doesRightUnitSurvive) {
-              this.opponentsField.removeContent(rightUnit.id);
-              rightUnit.delete();
+              this.handleDeath(rightUnit, this.opponentsField);
             }
 
             this.currentEvent = undefined;
           }
 
-          // leftUnit.gameObject.x = screenWidth / 2 - percentage * 100;
-          // rightUnit.gameObject.x = screenWidth / 2 + percentage * 100;
+          break;
+        case EEventType.Buff:
+          this.currentEvent.affectedUnits.forEach((unit) => {
+            unit.attack += 1;
+          });
           break;
         default:
           console.log(`Error unhandled event type: ${this.currentEvent.type}`);
       }
     }
   }
+
+  handleDeath(unit: Unit, field: Battlefield) {
+    const deathEvent = unit.createDeathEvent(this.myField, this.opponentsField);
+    if (deathEvent) {
+      this.eventQueue.push(deathEvent);
+    }
+    field.removeContent(unit.id);
+    unit.delete();
+  }
 }
+
+const rotateTowardAngle = (
+  startRotation: number,
+  finishRotation: number,
+  startAngle: number,
+  finishAngle: number,
+  percentage: number
+) => {
+  if (percentage >= startRotation && percentage <= finishRotation) {
+    return (
+      (startAngle || 0) +
+      ((finishAngle - startAngle) * (percentage - startRotation)) /
+        (finishRotation - startRotation)
+    );
+  }
+};
+
+const moveTowardsNumber = (
+  startMove: number,
+  finishMove: number,
+  start: number,
+  finish: number,
+  percentage: number
+) => {
+  if (percentage >= startMove && percentage <= finishMove) {
+    return (
+      start +
+      ((percentage - startMove) / (finishMove - startMove)) * (finish - start)
+    );
+  }
+};

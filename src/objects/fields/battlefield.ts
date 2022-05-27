@@ -17,12 +17,6 @@ export class Battlefield extends Field<Unit> {
 
     for (let i = 0; i < totalUnits; i++) {
       const unit = this.contents[i];
-
-      // unit.gameObject.x,
-      //         this.leftBorder +
-      //           (i + 0.5) * step +
-      //           (this.align * step - 100 * this.align) / 2,
-
       const border = this.align === 1 ? this.rightBorder : this.leftBorder;
 
       unit.gameObject.x = lerp(
