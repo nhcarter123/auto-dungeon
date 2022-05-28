@@ -27,10 +27,15 @@ export enum EEventType {
   Buff = "Buff",
 }
 
-export interface IEvent {
+interface IEvent {
   type: EEventType;
   affectedUnitIds: string[];
   duration: number;
+}
+
+interface IBuffEvent extends IEvent {
+  type: EEventType.Buff;
+  buffAmount: number;
 }
 
 interface IFightEvent extends IEvent {
@@ -39,12 +44,7 @@ interface IFightEvent extends IEvent {
   doesRightUnitSurvive: boolean;
 }
 
-interface IBuffEvent extends IEvent {
-  type: EEventType.Buff;
-  buffAmount: number;
-}
-
-type TEvent = IFightEvent | IBuffEvent;
+export type TEvent = IFightEvent | IBuffEvent;
 
 type TTimelineEvent = TEvent & {
   myUnits: TReducedUnitData[];
@@ -246,9 +246,17 @@ export default class Battle extends Phaser.Scene {
 
           break;
         case EEventType.Buff:
-          // this.simulatedEvent.affectedUnits.forEach((unit) => {
-          //   unit.attack += 1;
-          // });
+          for (const id of this.simulatedEvent.affectedUnitIds) {
+            const unit = find(
+              [...this.myField.contents, ...this.opponentsField.contents],
+              (content) =>
+                this.simulatedEvent?.affectedUnitIds[0] === content.id
+            );
+
+            if (unit) {
+              unit.attack += this.simulatedEvent.buffAmount;
+            }
+          }
           break;
       }
     }
@@ -406,7 +414,7 @@ export default class Battle extends Phaser.Scene {
   handleDeath(unit: Unit, field: Battlefield) {
     const deathEvent = unit.createDeathEvent(this.myField, this.opponentsField);
     if (deathEvent) {
-      // this.eventQueue.push(deathEvent);
+      this.eventQueue.push(deathEvent);
     }
     field.removeContent(unit.id);
     unit.delete();

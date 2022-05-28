@@ -3,7 +3,7 @@ import { Field } from "./field";
 import { lerp } from "../../utils";
 
 export class Battlefield extends Field<Unit> {
-  private align: number;
+  readonly align: number;
 
   constructor(x: number, y: number, width: number, align: number) {
     super(x, y, width);

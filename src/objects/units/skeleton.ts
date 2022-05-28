@@ -4,7 +4,7 @@ import {
   calculateDuration,
   EEventSpeed,
   EEventType,
-  IEvent,
+  TEvent,
 } from "../../scenes/battle";
 import { Battlefield } from "../fields/battlefield";
 
@@ -31,22 +31,30 @@ export class Skeleton extends Unit {
     });
   }
 
-  createDeathEvent(
-    myField: Battlefield,
-    opponentsField: Battlefield
-  ): IEvent | undefined {
-    const myIndex = myField.contents.findIndex(
-      (content) => content.id === this.id
-    );
+  handleDeathEvent(field: Battlefield): TEvent | undefined {
+    const index = field.contents.findIndex((content) => content.id === this.id);
 
-    if (myIndex + 1 < myField.contents.length) {
-      const unitToLeft = myField.contents[myIndex + 1];
+    if (index > -1 && index + 1 < field.contents.length) {
+      const unitToLeft = field.contents[index + 1];
 
       return {
         type: EEventType.Buff,
-        affectedUnits: [unitToLeft],
-        duration: calculateDuration(EEventSpeed.Medium),
+        affectedUnitIds: [unitToLeft.id],
+        duration: calculateDuration(EEventSpeed.Fast),
+        buffAmount: 3,
       };
     }
+  }
+
+  createDeathEvent(
+    myField: Battlefield,
+    opponentsField: Battlefield
+  ): TEvent | undefined {
+    const deathEvent = this.handleDeathEvent(myField);
+    if (deathEvent) {
+      return deathEvent;
+    }
+
+    return this.handleDeathEvent(opponentsField);
   }
 }
