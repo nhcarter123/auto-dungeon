@@ -16,6 +16,8 @@ export class Item {
   public id: string;
   public depth: number;
   public cost: number;
+  public x: number;
+  public y: number;
   public gameObject: Phaser.GameObjects.Image;
   public scale: number;
   public scaleMod: number;
@@ -34,6 +36,8 @@ export class Item {
     this.id = nanoid();
     this.cost = cost;
     this.type = type;
+    this.x = x;
+    this.y = y;
     this.depth = 0;
     this.scale = 1;
     this.scaleMod = 1;

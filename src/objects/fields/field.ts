@@ -56,13 +56,9 @@ export class Field<ContentType extends Good> {
       const unit = this.contents[i];
 
       if (unit.id !== selectedId) {
-        unit.gameObject.x = lerp(
-          unit.gameObject.x,
-          this.leftBorder + (i + 0.5) * step,
-          lerpSpeed
-        );
-        unit.gameObject.y = lerp(
-          unit.gameObject.y,
+        unit.x = lerp(unit.x, this.leftBorder + (i + 0.5) * step, lerpSpeed);
+        unit.y = lerp(
+          unit.y,
           this.y - unit.gameObject.displayHeight / 2 + 75,
           lerpSpeed
         );

@@ -123,16 +123,8 @@ export default class Planning extends Phaser.Scene {
     };
 
     if (this.selected) {
-      this.selected.gameObject.x = lerp(
-        this.selected.gameObject.x,
-        mouseX,
-        0.14
-      );
-      this.selected.gameObject.y = lerp(
-        this.selected.gameObject.y,
-        mouseY,
-        0.14
-      );
+      this.selected.x = lerp(this.selected.x, mouseX, 0.14);
+      this.selected.y = lerp(this.selected.y, mouseY, 0.14);
 
       if (this.selected instanceof Unit) {
         reorderStatus = this.field.reorderField(mouseX, mouseY, this.selected);

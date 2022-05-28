@@ -11,7 +11,7 @@ export class Battlefield extends Field<Unit> {
     this.align = align;
   }
 
-  positionContent(lerpSpeed: number, selectedId?: string) {
+  positionContent(lerpSpeed: number) {
     const totalUnits = this.contents.length;
     const step = this.width / Math.max(5, totalUnits);
 
@@ -19,13 +19,9 @@ export class Battlefield extends Field<Unit> {
       const unit = this.contents[i];
       const border = this.align === 1 ? this.rightBorder : this.leftBorder;
 
-      unit.gameObject.x = lerp(
-        unit.gameObject.x,
-        border - (i + 0.5) * step * this.align,
-        lerpSpeed
-      );
-      unit.gameObject.y = lerp(
-        unit.gameObject.y,
+      unit.x = lerp(unit.x, border - (i + 0.5) * step * this.align, lerpSpeed);
+      unit.y = lerp(
+        unit.y,
         this.y - unit.gameObject.displayHeight / 2 + 75,
         lerpSpeed
       );

@@ -31,13 +31,15 @@ export enum EImageKey {
 }
 
 export type TUnitOverrides = Partial<
-  Pick<Unit, "attack" | "health" | "id" | "facingDir" | "startX" | "startY">
+  Pick<Unit, "attack" | "health" | "id" | "facingDir" | "x" | "y">
 >;
 
 export class Unit {
   public id: string;
-  public startX: number;
-  public startY: number;
+  public x: number;
+  public y: number;
+  public animX: number;
+  public animY: number;
   public attack: number;
   public health: number;
   public type: EUnitType;
@@ -63,8 +65,10 @@ export class Unit {
     const numberSize = 24;
 
     this.id = overrides.id ? overrides.id : nanoid();
-    this.startX = overrides.startX || 0;
-    this.startY = overrides.startY || 0;
+    this.x = overrides.x || 0;
+    this.y = overrides.y || 0;
+    this.animX = 0;
+    this.animY = 0;
     this.attack = overrides.attack || 0;
     this.health = overrides.health || 0;
     this.facingDir = overrides.facingDir || 1;
@@ -74,11 +78,11 @@ export class Unit {
     this.depth = 0;
     this.scale = 1;
     this.scaleMod = 1;
-    this.gameObject = add.image(this.startX, this.startY, this.imageData.key);
+    this.gameObject = add.image(this.x, this.y, this.imageData.key);
     this.gameObject.scale =
       this.scale * this.scaleMod * this.imageData.scale * 0.7;
-    this.gameObject.x = this.startX;
-    this.gameObject.y = this.startY;
+    this.gameObject.x = this.x;
+    this.gameObject.y = this.y;
 
     const fontStyle = {
       fontSize: "20px",
@@ -91,32 +95,32 @@ export class Unit {
 
     this.gameObject.flipX = this.facingDir * this.imageData.startingDir > 0;
     this.attackObject = add.text(
-      this.startX,
-      this.startY,
+      this.x,
+      this.y,
       this.attack.toString(),
       fontStyle
     );
     this.healthObject = add.text(
-      this.startX,
-      this.startY,
+      this.x,
+      this.y,
       this.health.toString(),
       fontStyle
     );
     this.attackObjectBackground = add.circle(
-      this.startX,
-      this.startY,
+      this.x,
+      this.y,
       numberSize / 2 + 3,
       0x242424,
       1
     );
     this.healthObjectBackground = add.circle(
-      this.startX,
-      this.startY,
+      this.x,
+      this.y,
       numberSize / 2 + 3,
       0x242424,
       1
     );
-    this.levelObject = add.sprite(this.startX, this.startY, EImageKey.Level);
+    this.levelObject = add.sprite(this.x, this.y, EImageKey.Level);
 
     this.draw();
   }
@@ -132,6 +136,9 @@ export class Unit {
   }
 
   draw() {
+    this.gameObject.x = this.x + this.animX;
+    this.gameObject.y = this.y + this.animY;
+
     const scale = this.scale * this.scaleMod;
     const separation = 20 * scale;
     const leftX = this.gameObject.x - separation;
