@@ -14,7 +14,7 @@ import { Golem } from "../objects/units/golem";
 import { find, pick } from "lodash";
 
 const fastForward = 1;
-const EVENT_DELAY = 30;
+const EVENT_DELAY = 20;
 
 export enum EEventSpeed {
   Slow = 140,
@@ -25,6 +25,13 @@ export enum EEventSpeed {
 export enum EEventType {
   Fight = "Fight",
   Buff = "Buff",
+  Result = "Result",
+}
+
+export enum EResult {
+  Win = "Win",
+  Loss = "Loss",
+  Draw = "Draw",
 }
 
 interface IEvent {
@@ -36,6 +43,7 @@ interface IEvent {
 interface IBuffEvent extends IEvent {
   type: EEventType.Buff;
   buffAmount: number;
+  sourceUnitId: string;
 }
 
 interface IFightEvent extends IEvent {
@@ -44,7 +52,12 @@ interface IFightEvent extends IEvent {
   doesRightUnitSurvive: boolean;
 }
 
-export type TEvent = IFightEvent | IBuffEvent;
+interface IResultEvent extends IEvent {
+  type: EEventType.Result;
+  result: EResult;
+}
+
+export type TEvent = IFightEvent | IBuffEvent | IResultEvent;
 
 type TTimelineEvent = TEvent & {
   myUnits: TReducedUnitData[];
@@ -78,6 +91,8 @@ export default class Battle extends Phaser.Scene {
   private currentEventIndex: number;
   private delayStep: number;
   private durationStep: number;
+  private paused: boolean;
+  private buffObjects: Phaser.GameObjects.Arc[];
 
   constructor() {
     super(EScene.Battle);
@@ -87,6 +102,8 @@ export default class Battle extends Phaser.Scene {
     this.delayStep = 0;
     this.durationStep = 0;
     this.currentEventIndex = -1;
+    this.buffObjects = [];
+    this.paused = false;
 
     const halfScreenWidth = screenWidth / 2;
     const halfScreenHeight = screenHeight / 2;
@@ -139,14 +156,44 @@ export default class Battle extends Phaser.Scene {
     ];
 
     this.opponentsField.contents = [
-      createUnitFromType(this.add, getRandomUnitType(), { facingDir: -1 }),
-      createUnitFromType(this.add, getRandomUnitType(), { facingDir: -1 }),
-      createUnitFromType(this.add, getRandomUnitType(), { facingDir: -1 }),
-      createUnitFromType(this.add, getRandomUnitType(), { facingDir: -1 }),
-      createUnitFromType(this.add, getRandomUnitType(), { facingDir: -1 }),
-      createUnitFromType(this.add, getRandomUnitType(), { facingDir: -1 }),
-      createUnitFromType(this.add, getRandomUnitType(), { facingDir: -1 }),
+      createUnitFromType(this.add, EUnitType.Skeleton, { facingDir: -1 }),
+      createUnitFromType(this.add, EUnitType.Skeleton, { facingDir: -1 }),
+      createUnitFromType(this.add, EUnitType.Skeleton, { facingDir: -1 }),
+      createUnitFromType(this.add, EUnitType.Skeleton, { facingDir: -1 }),
+      createUnitFromType(this.add, EUnitType.Skeleton, { facingDir: -1 }),
+      createUnitFromType(this.add, EUnitType.Skeleton, { facingDir: -1 }),
+      createUnitFromType(this.add, EUnitType.Skeleton, { facingDir: -1 }),
+      // createUnitFromType(this.add, getRandomUnitType(), { facingDir: -1 }),
+      // createUnitFromType(this.add, getRandomUnitType(), { facingDir: -1 }),
+      // createUnitFromType(this.add, getRandomUnitType(), { facingDir: -1 }),
+      // createUnitFromType(this.add, getRandomUnitType(), { facingDir: -1 }),
+      // createUnitFromType(this.add, getRandomUnitType(), { facingDir: -1 }),
+      // createUnitFromType(this.add, getRandomUnitType(), { facingDir: -1 }),
+      // createUnitFromType(this.add, getRandomUnitType(), { facingDir: -1 }),
     ];
+
+    this.input.keyboard.on("keydown", (event: { keyCode: number }) => {
+      switch (event.keyCode) {
+        case Phaser.Input.Keyboard.KeyCodes.LEFT:
+          if (this.currentEventIndex > 0) {
+            this.currentEventIndex = this.currentEventIndex - 2;
+            this.timelineEvent = undefined;
+            this.delayStep = Infinity;
+            this.durationStep = 0;
+          }
+          break;
+        case Phaser.Input.Keyboard.KeyCodes.RIGHT:
+          if (this.currentEventIndex < this.timeline.length - 1) {
+            this.timelineEvent = undefined;
+            this.delayStep = Infinity;
+            this.durationStep = 0;
+          }
+          break;
+        case Phaser.Input.Keyboard.KeyCodes.SPACE:
+          this.paused = !this.paused;
+          break;
+      }
+    });
 
     this.myField.positionContent(1);
     this.opponentsField.positionContent(1);
@@ -166,14 +213,20 @@ export default class Battle extends Phaser.Scene {
     this.myField.positionContent(0.07 * fastForward);
     this.opponentsField.positionContent(0.07 * fastForward);
 
-    if (this.delayStep > EVENT_DELAY) {
-      this.timelineEvent = this.timeline[this.currentEventIndex];
-
-      if (!this.timelineEvent) {
-        console.log("done");
-        return;
+    if (!this.timelineEvent && this.currentEventIndex < this.timeline.length) {
+      this.currentEventIndex += 1;
+      this.timelineEvent = this.getCurrentEvent();
+      if (this.timelineEvent) {
+        this.syncField(this.myField, this.timelineEvent.myUnits);
+        this.syncField(this.opponentsField, this.timelineEvent.opponentsUnits);
       }
+    }
 
+    if (this.paused || !this.timelineEvent) {
+      return;
+    }
+
+    if (this.delayStep > EVENT_DELAY) {
       // if (this.durationStep === 0) {
       //   this.syncField(this.myField, this.timelineEvent.myUnits);
       //   this.syncField(this.opponentsField, this.timelineEvent.opponentsUnits);
@@ -182,23 +235,18 @@ export default class Battle extends Phaser.Scene {
       if (this.durationStep > this.timelineEvent.duration) {
         this.delayStep = 0;
         this.durationStep = 0;
+        this.timelineEvent = undefined;
       } else {
         this.animateEvent();
         this.durationStep += 1;
       }
     }
 
-    if (this.delayStep === 0) {
-      this.currentEventIndex += 1;
-      this.timelineEvent = this.timeline[this.currentEventIndex];
-
-      if (this.timelineEvent) {
-        this.syncField(this.myField, this.timelineEvent.myUnits);
-        this.syncField(this.opponentsField, this.timelineEvent.opponentsUnits);
-      }
-    }
-
     this.delayStep += 1;
+  }
+
+  getCurrentEvent(): TTimelineEvent | undefined {
+    return this.timeline[this.currentEventIndex];
   }
 
   createFrontFightEvent() {
@@ -214,6 +262,22 @@ export default class Battle extends Phaser.Scene {
         doesRightUnitSurvive: theirFirstUnit.health - myFirstUnit.attack > 0,
       });
     }
+  }
+
+  createResultEvent() {
+    let result = EResult.Draw;
+    if (this.myField.contents.length) {
+      result = EResult.Win;
+    } else if (this.opponentsField.contents.length) {
+      result = EResult.Loss;
+    }
+
+    this.eventQueue.push({
+      type: EEventType.Result,
+      affectedUnitIds: [],
+      duration: calculateDuration(EEventSpeed.Medium),
+      result: result,
+    });
   }
 
   processEvent() {
@@ -246,16 +310,31 @@ export default class Battle extends Phaser.Scene {
 
           break;
         case EEventType.Buff:
-          for (const id of this.simulatedEvent.affectedUnitIds) {
-            const unit = find(
-              [...this.myField.contents, ...this.opponentsField.contents],
-              (content) =>
-                this.simulatedEvent?.affectedUnitIds[0] === content.id
-            );
+          const sourceUnitId = this.simulatedEvent.sourceUnitId;
+          const field = this.myField.contains(sourceUnitId)
+            ? this.myField
+            : this.opponentsField;
 
-            if (unit) {
-              unit.attack += this.simulatedEvent.buffAmount;
+          const sourceUnit = find(
+            field.contents,
+            (content) => sourceUnitId === content.id
+          );
+
+          if (sourceUnit) {
+            for (const id of this.simulatedEvent.affectedUnitIds) {
+              const unit = find(
+                field.contents,
+                (content) =>
+                  this.simulatedEvent?.affectedUnitIds[0] === content.id
+              );
+
+              if (unit) {
+                unit.attack += this.simulatedEvent.buffAmount;
+              }
             }
+
+            field.removeContent(sourceUnitId);
+            sourceUnit.delete();
           }
           break;
       }
@@ -323,20 +402,14 @@ export default class Battle extends Phaser.Scene {
 
           const backupDist = -40;
 
-          const movement1 = moveTowardsNumber(0, 0.3, 0, backupDist, pct);
+          const movement1 = moveTowards(0, 0.3, 0, backupDist, pct);
           if (movement1) {
             leftUnit.animX = movement1;
             rightUnit.animX = -movement1;
           }
 
           const moveDist = 150;
-          const movement2 = moveTowardsNumber(
-            0.3,
-            0.4,
-            backupDist,
-            moveDist,
-            pct
-          );
+          const movement2 = moveTowards(0.3, 0.4, backupDist, moveDist, pct);
           if (movement2) {
             leftUnit.animX = movement2;
             rightUnit.animX = -movement2;
@@ -380,7 +453,7 @@ export default class Battle extends Phaser.Scene {
             }
           }
 
-          const movement3 = moveTowardsNumber(0.4, 1, 0, 1000, pct);
+          const movement3 = moveTowards(0.4, 1, 0, 1400, pct);
           if (!this.timelineEvent.doesLeftUnitSurvive && movement3) {
             leftUnit.animX = backupDist + moveDist - movement3;
             leftUnit.animY = -movement3 / 4;
@@ -390,38 +463,90 @@ export default class Battle extends Phaser.Scene {
             rightUnit.animY = -movement3 / 4;
           }
 
-          if (pct === 1) {
-            if (!this.timelineEvent.doesLeftUnitSurvive) {
-              this.myField.removeContent(leftUnit.id);
-              leftUnit.delete();
-            }
-            if (!this.timelineEvent.doesRightUnitSurvive) {
-              this.opponentsField.removeContent(rightUnit.id);
-              rightUnit.delete();
-            }
-          }
+          // if (pct === 1) {
+          //   if (!this.timelineEvent.doesLeftUnitSurvive) {
+          //     this.myField.removeContent(leftUnit.id);
+          //     leftUnit.delete();
+          //   }
+          //   if (!this.timelineEvent.doesRightUnitSurvive) {
+          //     this.opponentsField.removeContent(rightUnit.id);
+          //     rightUnit.delete();
+          //   }
+          // }
 
           break;
         case EEventType.Buff:
-          // this.timelineEvent.affectedUnits.forEach((unit) => {
-          //   unit.attack += 1;
-          // });
+          const sourceUnitId = this.timelineEvent.sourceUnitId;
+          const sourceUnit = find(
+            [...this.myField.contents, ...this.opponentsField.contents],
+            (content) => sourceUnitId === content.id
+          );
+
+          if (sourceUnit) {
+            const units = this.timelineEvent.affectedUnitIds
+              .map((id) =>
+                find(
+                  [...this.myField.contents, ...this.opponentsField.contents],
+                  (content) => id === content.id
+                )
+              )
+              .flatMap((v) => (v ? [v] : []));
+
+            if (!this.buffObjects.length) {
+              units.forEach((unit) => {
+                const buffObject = this.add.circle(
+                  unit.x,
+                  unit.y,
+                  10,
+                  0xd9d9d9
+                );
+                this.buffObjects.push(buffObject);
+              });
+            }
+
+            for (let i = 0; i < units.length; i++) {
+              const unit = units[i];
+              const buffObject = this.buffObjects[i];
+
+              const xPos = moveTowards(0, 1, sourceUnit.x, unit.x, pct);
+              const yPos = sourceUnit.y - 60 * Math.sin(Math.PI * pct) - 40;
+
+              if (xPos && yPos) {
+                buffObject.x = xPos;
+                buffObject.y = yPos;
+              }
+            }
+
+            if (pct === 1) {
+              this.clearBuffObjects();
+            }
+
+            // this.timelineEvent.affectedUnits.forEach((unit) => {
+            //   unit.attack += 1;
+            // });
+          }
           break;
       }
     }
   }
 
+  clearBuffObjects() {
+    this.buffObjects.forEach((obj) => obj.destroy());
+    this.buffObjects = [];
+  }
+
   handleDeath(unit: Unit, field: Battlefield) {
     const deathEvent = unit.createDeathEvent(this.myField, this.opponentsField);
     if (deathEvent) {
+      unit.visible = false;
       this.eventQueue.push(deathEvent);
+    } else {
+      field.removeContent(unit.id);
+      unit.delete();
     }
-    field.removeContent(unit.id);
-    unit.delete();
   }
 
   syncField(field: Battlefield, targetUnits: TReducedUnitData[]) {
-    // console.log([...field.contents]);
     const newUnits: Unit[] = [];
 
     if (this.timelineEvent) {
@@ -433,8 +558,12 @@ export default class Battle extends Phaser.Scene {
         );
 
         if (unitInField) {
-          unit.attack && (unitInField.attack = unit.attack);
-          unit.health && (unitInField.health = unit.health);
+          unit.attack !== undefined && (unitInField.attack = unit.attack);
+          unit.health !== undefined && (unitInField.health = unit.health);
+          unit.visible !== undefined && (unitInField.visible = unit.visible);
+          unitInField.gameObject.rotation = 0;
+          unitInField.animX = 0;
+          unitInField.animY = 0;
           // unit.x && (unitInField.x = unit.x);
           // unit.y && (unitInField.y = unit.y);
           newUnits.push(unitInField);
@@ -450,17 +579,14 @@ export default class Battle extends Phaser.Scene {
       }
     }
 
+    // Clean up existing units
     const unitsToRemove = field.contents.filter(
       (content) => !targetUnits.some((unit) => unit.id === content.id)
     );
     unitsToRemove.forEach((unit) => unit.delete());
+    this.clearBuffObjects();
 
     field.contents = newUnits;
-    // field.positionContent(1);
-    // field.contents.length = targetUnits.length;
-
-    // console.log(targetUnits);
-    // console.log(field.contents);
   }
 
   simulate() {
@@ -471,23 +597,7 @@ export default class Battle extends Phaser.Scene {
 
     // trigger battle-start events
 
-    while (index === 0 || this.eventQueue.length > 0 || index > maxSteps) {
-      if (
-        !this.myField.contents.length &&
-        !this.opponentsField.contents.length
-      ) {
-        console.log("Draw");
-        break;
-      }
-      if (!this.myField.contents.length) {
-        console.log("I lost");
-        break;
-      }
-      if (!this.opponentsField.contents.length) {
-        console.log("I won");
-        break;
-      }
-
+    while (index < maxSteps) {
       this.myField.positionContent(1);
       this.opponentsField.positionContent(1);
 
@@ -498,11 +608,20 @@ export default class Battle extends Phaser.Scene {
           myUnits: this.myField.contents.map(reduceUnit),
           opponentsUnits: this.opponentsField.contents.map(reduceUnit),
         });
+
+      if (this.simulatedEvent?.type === EEventType.Result) {
+        break;
+      }
+
       this.processEvent();
 
       if (!this.eventQueue.length) {
         this.createFrontFightEvent();
         // trigger pre-combat events for all units
+
+        if (!this.eventQueue.length) {
+          this.createResultEvent();
+        }
       }
 
       index += 1;
@@ -513,8 +632,10 @@ export default class Battle extends Phaser.Scene {
     this.myField.contents = [];
     this.opponentsField.contents = [];
 
-    if (index > maxSteps) {
-      console.log(`Error, did not reach finality`);
+    console.log(this.timeline);
+
+    if (index === maxSteps) {
+      console.log(`Error, did not reach finality in ${maxSteps} steps`);
     } else {
       console.log(`Done in ${index} steps`);
     }
@@ -522,7 +643,16 @@ export default class Battle extends Phaser.Scene {
 }
 
 const reduceUnit = (unit: Unit): TReducedUnitData => {
-  return pick(unit, ["id", "attack", "health", "facingDir", "type", "x", "y"]);
+  return pick(unit, [
+    "id",
+    "attack",
+    "health",
+    "facingDir",
+    "type",
+    "x",
+    "y",
+    "visible",
+  ]);
 };
 
 const rotateTowardAngle = (
@@ -541,7 +671,7 @@ const rotateTowardAngle = (
   }
 };
 
-const moveTowardsNumber = (
+const moveTowards = (
   startMove: number,
   finishMove: number,
   start: number,

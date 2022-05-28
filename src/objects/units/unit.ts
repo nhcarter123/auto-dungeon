@@ -31,7 +31,7 @@ export enum EImageKey {
 }
 
 export type TUnitOverrides = Partial<
-  Pick<Unit, "attack" | "health" | "id" | "facingDir" | "x" | "y">
+  Pick<Unit, "attack" | "health" | "id" | "facingDir" | "x" | "y" | "visible">
 >;
 
 export class Unit {
@@ -55,6 +55,7 @@ export class Unit {
   public depth: number;
   public scale: number;
   public scaleMod: number;
+  public visible: boolean;
 
   constructor(
     add: Phaser.GameObjects.GameObjectFactory,
@@ -78,6 +79,7 @@ export class Unit {
     this.depth = 0;
     this.scale = 1;
     this.scaleMod = 1;
+    this.visible = overrides.visible === undefined ? true : overrides.visible;
     this.gameObject = add.image(this.x, this.y, this.imageData.key);
     this.gameObject.scale =
       this.scale * this.scaleMod * this.imageData.scale * 0.7;
@@ -147,28 +149,33 @@ export class Unit {
       this.gameObject.y + this.gameObject.displayHeight / 2 + 20;
 
     this.gameObject.depth = this.depth;
+    this.gameObject.visible = this.visible;
 
     this.attackObject.text = this.attack.toString();
     this.attackObject.x = leftX - this.healthObject.displayWidth / 2;
     this.attackObject.y = positionY - this.healthObject.displayHeight / 2;
     this.attackObject.scale = scale;
     this.attackObject.depth = this.depth + 2;
+    this.attackObject.visible = this.visible;
 
     this.healthObject.text = this.health.toString();
     this.healthObject.x = rightX - this.healthObject.displayWidth / 2;
     this.healthObject.y = positionY - this.healthObject.displayHeight / 2;
     this.healthObject.scale = scale;
     this.healthObject.depth = this.depth + 2;
+    this.healthObject.visible = this.visible;
 
     this.attackObjectBackground.x = leftX;
     this.attackObjectBackground.y = positionY;
     this.attackObjectBackground.scale = scale;
     this.attackObjectBackground.depth = this.depth + 1;
+    this.attackObjectBackground.visible = this.visible;
 
     this.healthObjectBackground.x = rightX;
     this.healthObjectBackground.y = positionY;
     this.healthObjectBackground.scale = scale;
     this.healthObjectBackground.depth = this.depth + 1;
+    this.healthObjectBackground.visible = this.visible;
 
     this.levelObject.x = this.gameObject.x;
     this.levelObject.y =
@@ -176,6 +183,7 @@ export class Unit {
     this.levelObject.scale = scale * 0.35;
     this.levelObject.depth = this.depth + 1;
     this.levelObject.setFrame(this.xp - 1);
+    this.levelObject.visible = this.visible;
   }
 
   isMergableWith(targetUnit: Unit): boolean {
