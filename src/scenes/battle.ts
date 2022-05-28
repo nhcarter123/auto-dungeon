@@ -3,6 +3,7 @@ import {
   EImageKey,
   EUnitType,
   getRandomUnitType,
+  TUnitOverrides,
   Unit,
 } from "../objects/units/unit";
 import { Battlefield } from "../objects/fields/battlefield";
@@ -10,9 +11,16 @@ import { EScene, screenHeight, screenWidth } from "../config";
 import { Skeleton } from "../objects/units/skeleton";
 import { Ogre } from "../objects/units/ogre";
 import { Golem } from "../objects/units/golem";
+import { find, pick } from "lodash";
 
-const fastForward = 1;
+const fastForward = 0.5;
 const EVENT_DELAY = 60;
+
+export enum EEventSpeed {
+  Slow = 140,
+  Medium = 100,
+  Fast = 60,
+}
 
 export enum EEventType {
   Fight = "Fight",
@@ -25,26 +33,49 @@ export interface IEvent {
   duration: number;
 }
 
+interface IFightEvent extends IEvent {
+  type: EEventType.Fight;
+  doesLeftUnitSurvive: boolean;
+  doesRightUnitSurvive: boolean;
+}
+
+interface IBuffEvent extends IEvent {
+  type: EEventType.Buff;
+  buffAmount: number;
+}
+
+type TEvent = IFightEvent | IBuffEvent;
+
+type TTimelineEvent = TEvent & {
+  myUnits: TReducedUnitData[];
+  opponentsUnits: TReducedUnitData[];
+};
+
+type TReducedUnitData = TUnitOverrides & Pick<Unit, "type">;
+
 export const createUnitFromType = (
   add: Phaser.GameObjects.GameObjectFactory,
   type: EUnitType,
-  flipX?: boolean
+  overrides?: TUnitOverrides
 ) => {
   switch (type) {
     case EUnitType.Skeleton:
-      return new Skeleton(add, flipX);
+      return new Skeleton(add, overrides);
     case EUnitType.Ogre:
-      return new Ogre(add, flipX);
+      return new Ogre(add, overrides);
     case EUnitType.Golem:
-      return new Golem(add, flipX);
+      return new Golem(add, overrides);
   }
 };
 
 export default class Battle extends Phaser.Scene {
   private myField: Battlefield;
   private opponentsField: Battlefield;
-  private eventQueue: IEvent[];
-  private currentEvent: IEvent | undefined;
+  private eventQueue: TEvent[];
+  private simulatedEvent: TEvent | undefined;
+  private timeline: TTimelineEvent[];
+  private timelineEvent: TTimelineEvent | undefined;
+  private currentEventIndex: number;
   private delayStep: number;
   private durationStep: number;
 
@@ -52,8 +83,10 @@ export default class Battle extends Phaser.Scene {
     super(EScene.Battle);
 
     this.eventQueue = [];
+    this.timeline = [];
     this.delayStep = 0;
     this.durationStep = 0;
+    this.currentEventIndex = 0;
 
     const halfScreenWidth = screenWidth / 2;
     const halfScreenHeight = screenHeight / 2;
@@ -106,17 +139,19 @@ export default class Battle extends Phaser.Scene {
     ];
 
     this.opponentsField.contents = [
-      createUnitFromType(this.add, getRandomUnitType(), true),
-      createUnitFromType(this.add, getRandomUnitType(), true),
-      createUnitFromType(this.add, getRandomUnitType(), true),
-      createUnitFromType(this.add, getRandomUnitType(), true),
-      createUnitFromType(this.add, getRandomUnitType(), true),
-      createUnitFromType(this.add, getRandomUnitType(), true),
-      createUnitFromType(this.add, getRandomUnitType(), true),
+      createUnitFromType(this.add, getRandomUnitType(), { facingDir: -1 }),
+      createUnitFromType(this.add, getRandomUnitType(), { facingDir: -1 }),
+      createUnitFromType(this.add, getRandomUnitType(), { facingDir: -1 }),
+      createUnitFromType(this.add, getRandomUnitType(), { facingDir: -1 }),
+      createUnitFromType(this.add, getRandomUnitType(), { facingDir: -1 }),
+      createUnitFromType(this.add, getRandomUnitType(), { facingDir: -1 }),
+      createUnitFromType(this.add, getRandomUnitType(), { facingDir: -1 }),
     ];
 
     this.myField.positionContent(1);
     this.opponentsField.positionContent(1);
+
+    this.simulate();
   }
 
   update(time: number, delta: number) {
@@ -128,45 +163,35 @@ export default class Battle extends Phaser.Scene {
     this.myField.scaleContent();
     this.opponentsField.scaleContent();
 
-    if (!this.myField.contents.length && !this.opponentsField.contents.length) {
-      // console.log("Draw");
-      return;
-    }
-    if (!this.myField.contents.length) {
-      // console.log("I lost");
-      return;
-    }
-    if (!this.opponentsField.contents.length) {
-      // console.log("They lost");
-      return;
-    }
+    if (this.delayStep > EVENT_DELAY) {
+      this.timelineEvent = this.timeline[this.currentEventIndex];
 
-    // trigger battle-start events
-
-    if (this.delayStep > EVENT_DELAY / fastForward) {
-      if (!this.currentEvent) {
-        // trigger pre-combat events
-
-        // trigger fight events
-        this.createFrontFightEvent();
-
-        this.currentEvent = this.eventQueue.shift();
+      if (!this.timelineEvent) {
+        console.log("done");
+        return;
       }
 
-      if (this.currentEvent) {
-        if (this.durationStep > this.currentEvent.duration) {
-          this.delayStep = 0;
-          this.durationStep = 0;
-        } else {
-          this.performEvent();
-          this.durationStep += 1;
-        }
+      if (this.durationStep === 0) {
+        this.syncField(this.myField, this.timelineEvent.myUnits);
+        this.syncField(this.opponentsField, this.timelineEvent.opponentsUnits);
+      }
+
+      if (this.durationStep > this.timelineEvent.duration) {
+        this.delayStep = 0;
+        this.durationStep = 0;
+        this.currentEventIndex += 1;
+      } else {
+        this.animateEvent();
+        this.durationStep += 1;
       }
     } else {
-      // this leads to some problems.. can we run this always somehow?
       this.myField.positionContent(0.07 * fastForward);
       this.opponentsField.positionContent(0.07 * fastForward);
     }
+
+    // this leads to some problems.. can we run this always somehow?
+    // this.myField.positionContent(0.07 * fastForward);
+    // this.opponentsField.positionContent(0.07 * fastForward);
 
     this.delayStep += 1;
   }
@@ -174,37 +199,69 @@ export default class Battle extends Phaser.Scene {
   createFrontFightEvent() {
     const myFirstUnit = this.myField.contents[0];
     const theirFirstUnit = this.opponentsField.contents[0];
-    this.eventQueue.push({
-      type: EEventType.Fight,
-      affectedUnits: [myFirstUnit, theirFirstUnit],
-      duration: 100 / fastForward,
-    });
+
+    if (myFirstUnit && theirFirstUnit) {
+      this.eventQueue.push({
+        type: EEventType.Fight,
+        affectedUnits: [myFirstUnit, theirFirstUnit],
+        duration: calculateDuration(EEventSpeed.Medium),
+        doesLeftUnitSurvive: myFirstUnit.health - theirFirstUnit.attack > 0,
+        doesRightUnitSurvive: theirFirstUnit.health - myFirstUnit.attack > 0,
+      });
+    }
   }
 
-  performEvent() {
-    if (this.currentEvent) {
-      const pct = this.durationStep / this.currentEvent.duration;
-      const hitTime = Math.round(this.currentEvent.duration * 0.4);
-
-      switch (this.currentEvent.type) {
+  processEvent() {
+    if (this.simulatedEvent) {
+      switch (this.simulatedEvent.type) {
         case EEventType.Fight:
-          const leftUnit = this.currentEvent.affectedUnits[0];
-          const rightUnit = this.currentEvent.affectedUnits[1];
+          const leftUnit = this.simulatedEvent.affectedUnits[0];
+          const rightUnit = this.simulatedEvent.affectedUnits[1];
 
-          let doesLeftUnitSurvive,
-            doesRightUnitSurvive = false;
+          leftUnit.health -= rightUnit.attack;
+          rightUnit.health -= leftUnit.attack;
+
+          if (leftUnit.health < 0) {
+            this.handleDeath(leftUnit, this.myField);
+          }
+          if (rightUnit.health < 0) {
+            this.handleDeath(rightUnit, this.opponentsField);
+          }
+
+          break;
+        case EEventType.Buff:
+          this.simulatedEvent.affectedUnits.forEach((unit) => {
+            unit.attack += 1;
+          });
+          break;
+      }
+    }
+  }
+
+  animateEvent() {
+    if (this.timelineEvent) {
+      const pct = this.durationStep / this.timelineEvent.duration;
+      const hitTime = Math.round(this.timelineEvent.duration * 0.4);
+
+      switch (this.timelineEvent.type) {
+        case EEventType.Fight:
+          const leftUnit = find(
+            this.myField.contents,
+            (content) => this.timelineEvent?.affectedUnits[0].id === content.id
+          );
+          const rightUnit = find(
+            this.opponentsField.contents,
+            (content) => this.timelineEvent?.affectedUnits[1].id === content.id
+          );
+
+          if (!leftUnit || !rightUnit) {
+            console.log("Error: Unit is missing!");
+            return;
+          }
 
           if (this.durationStep === hitTime) {
             leftUnit.health -= rightUnit.attack;
             rightUnit.health -= leftUnit.attack;
-          }
-
-          if (this.durationStep >= hitTime) {
-            doesLeftUnitSurvive = leftUnit.health > 0;
-            doesRightUnitSurvive = rightUnit.health > 0;
-          } else {
-            doesLeftUnitSurvive = leftUnit.health - rightUnit.attack > 0;
-            doesRightUnitSurvive = rightUnit.health - leftUnit.attack > 0;
           }
 
           if (pct === 0) {
@@ -231,7 +288,7 @@ export default class Battle extends Phaser.Scene {
           const rot3 = rotateTowardAngle(0.6, 0.8, fAngle2, 0, pct);
           const rot4 = rotateTowardAngle(0.4, 1, fAngle2, -8, pct);
 
-          if (doesLeftUnitSurvive) {
+          if (this.timelineEvent.doesLeftUnitSurvive) {
             if (rot3) {
               leftUnit.gameObject.rotation = rot3;
             }
@@ -239,7 +296,7 @@ export default class Battle extends Phaser.Scene {
             leftUnit.gameObject.rotation = rot4;
           }
 
-          if (doesRightUnitSurvive) {
+          if (this.timelineEvent.doesRightUnitSurvive) {
             if (rot3) {
               rightUnit.gameObject.rotation = -rot3;
             }
@@ -279,11 +336,11 @@ export default class Battle extends Phaser.Scene {
                   Math.pow((pct - startMove2) / (finishMove2 - startMove2), 0.7)
               );
 
-            if (doesLeftUnitSurvive) {
+            if (this.timelineEvent.doesLeftUnitSurvive) {
               leftUnit.gameObject.x =
                 leftUnit.startX + backupDist + moveDist - movement;
             }
-            if (doesRightUnitSurvive) {
+            if (this.timelineEvent.doesRightUnitSurvive) {
               rightUnit.gameObject.x =
                 rightUnit.startX - backupDist - moveDist + movement;
             }
@@ -300,47 +357,34 @@ export default class Battle extends Phaser.Scene {
               ) *
               (moveDist + backupDist);
 
-            if (doesLeftUnitSurvive) {
+            if (this.timelineEvent.doesLeftUnitSurvive) {
               leftUnit.gameObject.x =
                 leftUnit.startX + backupDist + moveDist - movement;
             }
-            if (doesRightUnitSurvive) {
+            if (this.timelineEvent.doesRightUnitSurvive) {
               rightUnit.gameObject.x =
                 rightUnit.startX - backupDist - moveDist + movement;
             }
           }
 
           const movement3 = moveTowardsNumber(0.4, 1, 0, 1000, pct);
-          if (!doesLeftUnitSurvive && movement3) {
+          if (!this.timelineEvent.doesLeftUnitSurvive && movement3) {
             leftUnit.gameObject.x =
               leftUnit.startX + backupDist + moveDist - movement3;
             leftUnit.gameObject.y = leftUnit.startY - movement3 / 4;
           }
-          if (!doesRightUnitSurvive && movement3) {
+          if (!this.timelineEvent.doesRightUnitSurvive && movement3) {
             rightUnit.gameObject.x =
               rightUnit.startX - backupDist - moveDist + movement3;
             rightUnit.gameObject.y = rightUnit.startY - movement3 / 4;
           }
 
-          if (pct === 1) {
-            if (!doesLeftUnitSurvive) {
-              this.handleDeath(leftUnit, this.myField);
-            }
-            if (!doesRightUnitSurvive) {
-              this.handleDeath(rightUnit, this.opponentsField);
-            }
-
-            this.currentEvent = undefined;
-          }
-
           break;
         case EEventType.Buff:
-          this.currentEvent.affectedUnits.forEach((unit) => {
+          this.timelineEvent.affectedUnits.forEach((unit) => {
             unit.attack += 1;
           });
           break;
-        default:
-          console.log(`Error unhandled event type: ${this.currentEvent.type}`);
       }
     }
   }
@@ -348,12 +392,110 @@ export default class Battle extends Phaser.Scene {
   handleDeath(unit: Unit, field: Battlefield) {
     const deathEvent = unit.createDeathEvent(this.myField, this.opponentsField);
     if (deathEvent) {
-      this.eventQueue.push(deathEvent);
+      // this.eventQueue.push(deathEvent);
     }
     field.removeContent(unit.id);
     unit.delete();
   }
+
+  syncField(field: Battlefield, targetUnits: TReducedUnitData[]) {
+    // console.log([...field.contents]);
+    const newUnits: Unit[] = [];
+
+    if (this.timelineEvent) {
+      for (let i = 0; i < targetUnits.length; i++) {
+        const unit = targetUnits[i];
+        const unitInField = find(
+          field.contents,
+          (content) => content.id === unit.id
+        );
+
+        if (unitInField) {
+          newUnits.push(unitInField);
+        } else {
+          console.log("created unit");
+          newUnits.push(
+            createUnitFromType(this.add, unit.type, {
+              ...unit,
+            })
+          );
+        }
+      }
+    }
+
+    const unitsToRemove = field.contents.filter(
+      (content) => !targetUnits.some((unit) => unit.id === content.id)
+    );
+    unitsToRemove.forEach((unit) => unit.delete());
+
+    field.contents = newUnits;
+    field.positionContent(1);
+    // field.contents.length = targetUnits.length;
+
+    // console.log(targetUnits);
+    // console.log(field.contents);
+  }
+
+  simulate() {
+    const maxSteps = 1000;
+    let index = 0;
+
+    // todo disable rendering
+
+    // trigger battle-start events
+
+    while (index === 0 || this.eventQueue.length > 0 || index > maxSteps) {
+      if (
+        !this.myField.contents.length &&
+        !this.opponentsField.contents.length
+      ) {
+        console.log("Draw");
+        break;
+      }
+      if (!this.myField.contents.length) {
+        console.log("I lost");
+        break;
+      }
+      if (!this.opponentsField.contents.length) {
+        console.log("I won");
+        break;
+      }
+
+      this.simulatedEvent = this.eventQueue.pop();
+      this.simulatedEvent &&
+        this.timeline.push({
+          ...this.simulatedEvent,
+          myUnits: this.myField.contents.map(reduceUnit),
+          opponentsUnits: this.opponentsField.contents.map(reduceUnit),
+        });
+      this.processEvent();
+
+      if (!this.eventQueue.length) {
+        this.createFrontFightEvent();
+        // trigger pre-combat events for all units
+      }
+
+      index += 1;
+    }
+
+    console.log(this.timeline);
+
+    this.myField.contents.forEach((content) => content.delete());
+    this.opponentsField.contents.forEach((content) => content.delete());
+    this.myField.contents = [];
+    this.opponentsField.contents = [];
+
+    if (index > maxSteps) {
+      console.log(`Error, did not reach finality`);
+    } else {
+      console.log(`Done in ${index} steps`);
+    }
+  }
 }
+
+const reduceUnit = (unit: Unit): TReducedUnitData => {
+  return pick(unit, ["id", "attack", "health", "facingDir", "type"]);
+};
 
 const rotateTowardAngle = (
   startRotation: number,
@@ -384,4 +526,8 @@ const moveTowardsNumber = (
       ((percentage - startMove) / (finishMove - startMove)) * (finish - start)
     );
   }
+};
+
+export const calculateDuration = (speed: EEventSpeed) => {
+  return Math.round(speed / fastForward);
 };

@@ -1,10 +1,18 @@
 import Phaser from "phaser";
-import { EImageKey, EUnitType, IImageData, Unit } from "./unit";
-import { EEventType, IEvent } from "../../scenes/battle";
+import { EImageKey, EUnitType, IImageData, TUnitOverrides, Unit } from "./unit";
+import {
+  calculateDuration,
+  EEventSpeed,
+  EEventType,
+  IEvent,
+} from "../../scenes/battle";
 import { Battlefield } from "../fields/battlefield";
 
 export class Skeleton extends Unit {
-  constructor(add: Phaser.GameObjects.GameObjectFactory, flipX?: boolean) {
+  constructor(
+    add: Phaser.GameObjects.GameObjectFactory,
+    overrides?: TUnitOverrides
+  ) {
     const imageData: IImageData = {
       key: EImageKey.Skeleton,
       path: "assets/images/skeleton.png",
@@ -12,7 +20,15 @@ export class Skeleton extends Unit {
       startingDir: 1,
     };
 
-    super(add, EUnitType.Skeleton, 2, 1, imageData, flipX);
+    const defaults: TUnitOverrides = {
+      attack: 2,
+      health: 1,
+    };
+
+    super(add, EUnitType.Skeleton, imageData, {
+      ...defaults,
+      ...(overrides || {}),
+    });
   }
 
   createDeathEvent(
@@ -29,7 +45,7 @@ export class Skeleton extends Unit {
       return {
         type: EEventType.Buff,
         affectedUnits: [unitToLeft],
-        duration: 100,
+        duration: calculateDuration(EEventSpeed.Medium),
       };
     }
   }

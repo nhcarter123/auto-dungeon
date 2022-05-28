@@ -1,8 +1,11 @@
 import Phaser from "phaser";
-import { EImageKey, EUnitType, IImageData, Unit } from "./unit";
+import { EImageKey, EUnitType, IImageData, TUnitOverrides, Unit } from "./unit";
 
 export class Ogre extends Unit {
-  constructor(add: Phaser.GameObjects.GameObjectFactory, flipX?: boolean) {
+  constructor(
+    add: Phaser.GameObjects.GameObjectFactory,
+    overrides?: TUnitOverrides
+  ) {
     const imageData: IImageData = {
       key: EImageKey.Ogre,
       path: "assets/images/ogre.png",
@@ -10,6 +13,14 @@ export class Ogre extends Unit {
       startingDir: -1,
     };
 
-    super(add, EUnitType.Ogre, 1, 3, imageData, flipX);
+    const defaults: TUnitOverrides = {
+      attack: 1,
+      health: 3,
+    };
+
+    super(add, EUnitType.Ogre, imageData, {
+      ...defaults,
+      ...(overrides || {}),
+    });
   }
 }

@@ -30,6 +30,10 @@ export enum EImageKey {
   Level = "Level",
 }
 
+export type TUnitOverrides = Partial<
+  Pick<Unit, "attack" | "health" | "id" | "facingDir" | "startX" | "startY">
+>;
+
 export class Unit {
   public id: string;
   public startX: number;
@@ -53,19 +57,17 @@ export class Unit {
   constructor(
     add: Phaser.GameObjects.GameObjectFactory,
     type: EUnitType,
-    attack: number,
-    health: number,
     imageData: IImageData,
-    flipX?: boolean
+    overrides: TUnitOverrides
   ) {
     const numberSize = 24;
 
-    this.id = nanoid();
-    this.startX = 0;
-    this.startY = 0;
-    this.attack = attack;
-    this.health = health;
-    this.facingDir = flipX ? -1 : 1;
+    this.id = overrides.id ? overrides.id : nanoid();
+    this.startX = overrides.startX || 0;
+    this.startY = overrides.startY || 0;
+    this.attack = overrides.attack || 0;
+    this.health = overrides.health || 0;
+    this.facingDir = overrides.facingDir || 1;
     this.imageData = imageData;
     this.type = type;
     this.xp = 1;
@@ -75,6 +77,8 @@ export class Unit {
     this.gameObject = add.image(this.startX, this.startY, this.imageData.key);
     this.gameObject.scale =
       this.scale * this.scaleMod * this.imageData.scale * 0.7;
+    this.gameObject.x = this.startX;
+    this.gameObject.y = this.startY;
 
     const fontStyle = {
       fontSize: "20px",
