@@ -1,6 +1,6 @@
-import { Unit } from "../units/unit";
 import { Field } from "./field";
-import { lerp } from "../../utils";
+import { lerp } from "../../helpers/math";
+import { Unit } from "../good/units/unit";
 
 export class Battlefield extends Field<Unit> {
   readonly align: number;

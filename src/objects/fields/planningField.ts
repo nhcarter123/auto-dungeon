@@ -1,6 +1,6 @@
-import { MAX_XP, Unit } from "../units/unit";
 import moment from "moment";
 import { Field } from "./field";
+import { MAX_XP, Unit } from "../good/units/unit";
 
 export interface ReorderStatus {
   mergingUnit: Unit | undefined;
@@ -57,7 +57,7 @@ export class PlanningField extends Field<Unit> {
 
         if (!mergable || wantsToSwap) {
           this.hoveredUnitId = "";
-          this.swapUnits(currentIndex, targetIndex);
+          this.moveInArray(currentIndex, targetIndex);
         }
       }
     } else {

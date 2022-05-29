@@ -1,7 +1,7 @@
-import { EImageKey } from "./units/unit";
-import { lerp } from "../utils";
 import Phaser from "phaser";
 import { EMouseEvent } from "../scenes/planning";
+import { lerp } from "../helpers/math";
+import { EImageKey } from "./good/units/unit";
 
 export class Button {
   public gameObject: Phaser.GameObjects.Image;

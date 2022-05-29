@@ -1,7 +1,7 @@
 import { find } from "lodash";
 import { IBuffEvent } from "../scenes/battle";
 import { Unit } from "../objects/units/unit";
-import { moveTowards } from "./helpers";
+import { moveTowards } from "../helpers/animation";
 import Phaser from "phaser";
 
 export const animateBuff = (

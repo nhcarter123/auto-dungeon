@@ -1,22 +1,21 @@
 import Phaser from "phaser";
-import {
-  EImageKey,
-  EUnitType,
-  getRandomUnitType,
-  TUnitOverrides,
-  Unit,
-} from "../objects/units/unit";
 import { Battlefield } from "../objects/fields/battlefield";
 import { EScene, screenHeight, screenWidth } from "../config";
-import { Skeleton } from "../objects/units/skeleton";
-import { Ogre } from "../objects/units/ogre";
-import { Golem } from "../objects/units/golem";
-import { find, pick } from "lodash";
+import { find } from "lodash";
 import { animateFight } from "../animations/fight";
 import { animateBuff } from "../animations/buff";
+import { saveData } from "../index";
+import {
+  createUnitFromType,
+  getRandomUnitType,
+  reduceUnit,
+  TReducedUnitData,
+} from "../helpers/unit";
+import { calculateDuration } from "../helpers/math";
+import { EImageKey, Unit } from "../objects/good/units/unit";
 
 const fastForward = 1;
-const EVENT_DELAY = 20;
+const EVENT_DELAY = 30;
 
 export enum EEventSpeed {
   Slow = 140,
@@ -66,23 +65,6 @@ export type TShopEvent = IBuffEvent;
 type TTimelineEvent = TBattleEvent & {
   myUnits: TReducedUnitData[];
   opponentsUnits: TReducedUnitData[];
-};
-
-type TReducedUnitData = TUnitOverrides & Pick<Unit, "type">;
-
-export const createUnitFromType = (
-  add: Phaser.GameObjects.GameObjectFactory,
-  type: EUnitType,
-  overrides?: TUnitOverrides
-) => {
-  switch (type) {
-    case EUnitType.Skeleton:
-      return new Skeleton(add, overrides);
-    case EUnitType.Ogre:
-      return new Ogre(add, overrides);
-    case EUnitType.Golem:
-      return new Golem(add, overrides);
-  }
 };
 
 export default class Battle extends Phaser.Scene {
@@ -151,13 +133,9 @@ export default class Battle extends Phaser.Scene {
     );
     background.depth = -10;
 
-    this.myField.contents = [
-      createUnitFromType(this.add, getRandomUnitType()),
-      createUnitFromType(this.add, getRandomUnitType()),
-      createUnitFromType(this.add, getRandomUnitType()),
-      createUnitFromType(this.add, getRandomUnitType()),
-      createUnitFromType(this.add, getRandomUnitType()),
-    ];
+    this.myField.contents = saveData.units.map((unit) =>
+      createUnitFromType(this.add, unit.type, unit)
+    );
 
     this.opponentsField.contents = [
       // createUnitFromType(this.add, EUnitType.Skeleton, { facingDir: -1 }),
@@ -223,6 +201,9 @@ export default class Battle extends Phaser.Scene {
       if (this.timelineEvent) {
         this.syncField(this.myField, this.timelineEvent.myUnits);
         this.syncField(this.opponentsField, this.timelineEvent.opponentsUnits);
+      } else {
+        // const result = this.timeline[this.timeline.length - 1]
+        this.goToShop();
       }
     }
 
@@ -341,7 +322,7 @@ export default class Battle extends Phaser.Scene {
       // handle death events
       [...this.myField.contents, ...this.opponentsField.contents].forEach(
         (content) => {
-          if (content.health <= 0) {
+          if (content.health <= 0 && content.visible) {
             this.handleDeath(content);
           }
         }
@@ -480,21 +461,8 @@ export default class Battle extends Phaser.Scene {
       console.log(`Done in ${index} steps`);
     }
   }
+
+  goToShop() {
+    this.scene.switch(EScene.Planning);
+  }
 }
-
-const reduceUnit = (unit: Unit): TReducedUnitData => {
-  return pick(unit, [
-    "id",
-    "attack",
-    "health",
-    "facingDir",
-    "type",
-    "x",
-    "y",
-    "visible",
-  ]);
-};
-
-export const calculateDuration = (speed: EEventSpeed) => {
-  return Math.round(speed / fastForward);
-};

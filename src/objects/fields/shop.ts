@@ -1,10 +1,7 @@
-import { Unit, getRandomUnitType } from "../units/unit";
 import Phaser from "phaser";
-import { Item } from "../item";
 import { Field } from "./field";
-import { createUnitFromType } from "../../scenes/battle";
-
-export type Good = Unit | Item;
+import { createUnitFromType, getRandomUnitType } from "../../helpers/unit";
+import { Good } from "../good/good";
 
 export class Shop extends Field<Good> {
   public size: number;

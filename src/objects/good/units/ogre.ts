@@ -1,12 +1,8 @@
 import Phaser from "phaser";
 import { EImageKey, EUnitType, IImageData, TUnitOverrides, Unit } from "./unit";
-import {
-  calculateDuration,
-  EEventSpeed,
-  EEventType,
-  TShopEvent,
-} from "../../scenes/battle";
-import { PlanningField } from "../fields/planningField";
+import { EEventSpeed, EEventType, TShopEvent } from "../../../scenes/battle";
+import { PlanningField } from "../../fields/planningField";
+import { calculateDuration } from "../../../helpers/math";
 
 export class Ogre extends Unit {
   constructor(
@@ -31,6 +27,14 @@ export class Ogre extends Unit {
     });
   }
 
+  getDescription(): string {
+    return `End of turn: Give the unit in front +0/+${this.getHealthBuff()}`;
+  }
+
+  getHealthBuff(): number {
+    return this.getLevel();
+  }
+
   createEndTurnEvent(field: PlanningField): TShopEvent | undefined {
     const index = field.contents.findIndex((content) => content.id === this.id);
 
@@ -38,9 +42,9 @@ export class Ogre extends Unit {
       return {
         type: EEventType.Buff,
         attackAmount: 0,
-        healthAmount: 1,
+        healthAmount: this.getHealthBuff(),
         sourceUnitId: this.id,
-        duration: calculateDuration(EEventSpeed.Medium),
+        duration: calculateDuration(EEventSpeed.Fast),
         affectedUnitIds: [field.contents[index + 1].id],
       };
     }

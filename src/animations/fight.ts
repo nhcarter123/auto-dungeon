@@ -1,8 +1,8 @@
 import { find } from "lodash";
 import { IFightEvent } from "../scenes/battle";
 import { Field } from "../objects/fields/field";
-import { Unit } from "../objects/units/unit";
-import { moveTowards, rotateTowardAngle } from "./helpers";
+import { moveTowards, rotateTowardAngle } from "../helpers/animation";
+import { Unit } from "../objects/good/units/unit";
 
 export const animateFight = (
   e: IFightEvent,

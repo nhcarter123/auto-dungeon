@@ -1,9 +1,9 @@
 import Phaser from "phaser";
-import { nanoid } from "nanoid";
-import { lerp } from "../../utils";
-import { TBattleEvent, TShopEvent } from "../../scenes/battle";
-import { Battlefield } from "../fields/battlefield";
-import { PlanningField } from "../fields/planningField";
+import { TBattleEvent, TShopEvent } from "../../../scenes/battle";
+import { Battlefield } from "../../fields/battlefield";
+import { PlanningField } from "../../fields/planningField";
+import { lerp } from "../../../helpers/math";
+import { Good, TGoodOverrides } from "../good";
 
 export const MAX_XP = 5;
 
@@ -29,34 +29,30 @@ export enum EImageKey {
   Ogre = "Ogre",
   Golem = "Golem",
   Level = "Level",
+  Gold = "Gold",
 }
 
-export type TUnitOverrides = Partial<
-  Pick<Unit, "attack" | "health" | "id" | "facingDir" | "x" | "y" | "visible">
->;
+export type TUnitOverrides = TGoodOverrides &
+  Partial<
+    Pick<
+      Unit,
+      "attack" | "health" | "id" | "facingDir" | "x" | "y" | "visible" | "xp"
+    >
+  >;
 
-export class Unit {
-  public id: string;
-  public x: number;
-  public y: number;
+export class Unit extends Good {
   public animX: number;
   public animY: number;
   public attack: number;
   public health: number;
-  public type: EUnitType;
-  public facingDir: number;
-  public imageData: IImageData;
-  public gameObject: Phaser.GameObjects.Image;
   public attackObject: Phaser.GameObjects.Text;
   public attackObjectBackground: Phaser.GameObjects.Arc;
   public healthObject: Phaser.GameObjects.Text;
   public healthObjectBackground: Phaser.GameObjects.Arc;
   public levelObject: Phaser.GameObjects.Sprite;
   public xp: number;
-  public depth: number;
-  public scale: number;
-  public scaleMod: number;
   public visible: boolean;
+  public type: EUnitType;
 
   constructor(
     add: Phaser.GameObjects.GameObjectFactory,
@@ -64,28 +60,16 @@ export class Unit {
     imageData: IImageData,
     overrides: TUnitOverrides
   ) {
-    const numberSize = 24;
+    super(add, type, imageData, overrides);
 
-    this.id = overrides.id ? overrides.id : nanoid();
-    this.x = overrides.x || 0;
-    this.y = overrides.y || 0;
+    const numberSize = 24;
     this.animX = 0;
     this.animY = 0;
-    this.attack = overrides.attack || 0;
-    this.health = overrides.health || 0;
-    this.facingDir = overrides.facingDir || 1;
-    this.imageData = imageData;
-    this.type = type;
-    this.xp = 1;
-    this.depth = 0;
-    this.scale = 1;
-    this.scaleMod = 1;
+    this.attack = overrides.attack === undefined ? 1 : overrides.attack;
+    this.health = overrides.health === undefined ? 1 : overrides.health;
+    this.xp = overrides.xp === undefined ? 1 : overrides.xp;
     this.visible = overrides.visible === undefined ? true : overrides.visible;
-    this.gameObject = add.image(this.x, this.y, this.imageData.key);
-    this.gameObject.scale =
-      this.scale * this.scaleMod * this.imageData.scale * 0.7;
-    this.gameObject.x = this.x;
-    this.gameObject.y = this.y;
+    this.type = type;
 
     const fontStyle = {
       fontSize: "20px",
@@ -187,6 +171,10 @@ export class Unit {
     this.levelObject.visible = this.visible;
   }
 
+  getLevel(): number {
+    return Math.floor(this.xp / 3) + 1;
+  }
+
   isMergableWith(targetUnit: Unit): boolean {
     return (
       this.type === targetUnit.type &&
@@ -215,8 +203,3 @@ export class Unit {
     this.levelObject?.destroy();
   }
 }
-
-export const getRandomUnitType = (): EUnitType => {
-  const array = Object.values(EUnitType);
-  return array[Math.floor(Math.random() * array.length)];
-};

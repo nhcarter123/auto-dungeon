@@ -1,6 +1,6 @@
-import { lerp } from "../../utils";
 import Phaser from "phaser";
-import { Good } from "./shop";
+import { lerp } from "../../helpers/math";
+import { Good } from "../good/good";
 
 export class Field<ContentType extends Good> {
   public contents: ContentType[];
@@ -87,7 +87,7 @@ export class Field<ContentType extends Good> {
     });
   }
 
-  swapUnits(fromIndex: number, toIndex: number) {
+  moveInArray(fromIndex: number, toIndex: number) {
     const element = this.contents[fromIndex];
     this.contents.splice(fromIndex, 1);
     this.contents.splice(toIndex, 0, element);

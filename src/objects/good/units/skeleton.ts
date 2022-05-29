@@ -1,12 +1,8 @@
 import Phaser from "phaser";
 import { EImageKey, EUnitType, IImageData, TUnitOverrides, Unit } from "./unit";
-import {
-  calculateDuration,
-  EEventSpeed,
-  EEventType,
-  TBattleEvent,
-} from "../../scenes/battle";
-import { Battlefield } from "../fields/battlefield";
+import { EEventSpeed, EEventType, TBattleEvent } from "../../../scenes/battle";
+import { Battlefield } from "../../fields/battlefield";
+import { calculateDuration } from "../../../helpers/math";
 
 export class Skeleton extends Unit {
   constructor(
@@ -31,6 +27,14 @@ export class Skeleton extends Unit {
     });
   }
 
+  getDescription(): string {
+    return `Death: Give the unit behind +${this.getAttackBuff()}/+0 until the end of battle`;
+  }
+
+  getAttackBuff(): number {
+    return this.getLevel() * 2;
+  }
+
   handleDeathEvent(field: Battlefield): TBattleEvent | undefined {
     const index = field.contents.findIndex((content) => content.id === this.id);
 
@@ -42,7 +46,7 @@ export class Skeleton extends Unit {
         affectedUnitIds: [unitToLeft.id],
         sourceUnitId: this.id,
         duration: calculateDuration(EEventSpeed.Fast),
-        attackAmount: 2,
+        attackAmount: this.getAttackBuff(),
         healthAmount: 0,
       };
     }
