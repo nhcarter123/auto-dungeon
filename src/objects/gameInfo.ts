@@ -42,7 +42,7 @@ export class GameInfo {
     this.goldIconObject.scale = lerp(
       this.goldIconObject.scale,
       this.scale,
-      0.2
+      0.1
     );
   }
 }

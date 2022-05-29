@@ -7,7 +7,10 @@ import { PlanningField, ReorderStatus } from "../objects/fields/planningField";
 import { EEventType, TShopEvent } from "./battle";
 import { animateBuff } from "../animations/buff";
 import { saveData } from "../index";
-import { createUnitFromType, reduceUnit } from "../helpers/unit";
+import {
+  createUnitFromType,
+  reduceUnit,
+} from "../helpers/unit";
 import { lerp } from "../helpers/math";
 import { GameInfo } from "../objects/gameInfo";
 import { EImageKey, Unit } from "../objects/good/units/unit";
@@ -121,6 +124,20 @@ export default class Planning extends Phaser.Scene {
 
     this.input.on(EMouseEvent.PointerDown, () => (this.mouseClicked = true));
     this.input.on(EMouseEvent.PointerUp, () => (this.mouseReleased = true));
+
+    this.events.on("wake", () => this.setupShop());
+    this.setupShop();
+  }
+
+  setupShop() {
+    saveData.gold = 10;
+    this.clearFields();
+
+    this.field.contents = saveData.units.map((unit) =>
+      createUnitFromType(this.add, unit.type, unit)
+    );
+
+    this.shop.rollGoods();
   }
 
   update(time: number, delta: number) {
@@ -253,17 +270,25 @@ export default class Planning extends Phaser.Scene {
           this.selected.depth = 0;
 
           if (showSellButton && this.sellButton?.hovered) {
+            saveData.gold += this.selected.getLevel();
             this.field.removeContent(this.selected.id);
             this.selected.delete();
           } else if (reorderStatus.mergingUnit) {
-            if (saveData.gold >= this.selected.cost) {
-              // buy
-              saveData.gold -= this.selected.cost;
-              this.shop.removeContent(this.selected.id);
+            let allowedToMerge = true;
+
+            if (this.shop.contains(this.selected.id)) {
+              if (saveData.gold >= this.selected.cost) {
+                // buy
+                saveData.gold -= this.selected.cost;
+              } else {
+                // return to shop
+                this.field.removeContent(this.selected.id);
+                allowedToMerge = false;
+              }
+            }
+
+            if (allowedToMerge) {
               this.field.mergeUnits(reorderStatus.mergingUnit, this.selected);
-            } else {
-              // return to shop
-              this.field.removeContent(this.selected.id);
             }
           } else {
             if (this.shop.contains(this.selected.id)) {
@@ -324,13 +349,17 @@ export default class Planning extends Phaser.Scene {
     });
   }
 
+  clearFields() {
+    this.field.contents.forEach((content) => content.delete());
+    this.field.contents = [];
+  }
+
   goToBattle() {
     this.clickedNextButton = false;
     this.setInteractive(true);
 
-    saveData.units = this.field.contents
-      .map((content) => reduceUnit(content))
-      .reverse();
+    saveData.units = this.field.contents.map((content) => reduceUnit(content));
+
     this.scene.switch(EScene.Battle);
   }
 }

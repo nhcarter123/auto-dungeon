@@ -133,27 +133,6 @@ export default class Battle extends Phaser.Scene {
     );
     background.depth = -10;
 
-    this.myField.contents = saveData.units.map((unit) =>
-      createUnitFromType(this.add, unit.type, unit)
-    );
-
-    this.opponentsField.contents = [
-      // createUnitFromType(this.add, EUnitType.Skeleton, { facingDir: -1 }),
-      // createUnitFromType(this.add, EUnitType.Skeleton, { facingDir: -1 }),
-      // createUnitFromType(this.add, EUnitType.Skeleton, { facingDir: -1 }),
-      // createUnitFromType(this.add, EUnitType.Skeleton, { facingDir: -1 }),
-      // createUnitFromType(this.add, EUnitType.Skeleton, { facingDir: -1 }),
-      // createUnitFromType(this.add, EUnitType.Skeleton, { facingDir: -1 }),
-      // createUnitFromType(this.add, EUnitType.Skeleton, { facingDir: -1 }),
-      createUnitFromType(this.add, getRandomUnitType(), { facingDir: -1 }),
-      createUnitFromType(this.add, getRandomUnitType(), { facingDir: -1 }),
-      createUnitFromType(this.add, getRandomUnitType(), { facingDir: -1 }),
-      createUnitFromType(this.add, getRandomUnitType(), { facingDir: -1 }),
-      createUnitFromType(this.add, getRandomUnitType(), { facingDir: -1 }),
-      createUnitFromType(this.add, getRandomUnitType(), { facingDir: -1 }),
-      createUnitFromType(this.add, getRandomUnitType(), { facingDir: -1 }),
-    ];
-
     this.input.keyboard.on("keydown", (event: { keyCode: number }) => {
       switch (event.keyCode) {
         case Phaser.Input.Keyboard.KeyCodes.LEFT:
@@ -177,10 +156,8 @@ export default class Battle extends Phaser.Scene {
       }
     });
 
-    this.myField.positionContent(1);
-    this.opponentsField.positionContent(1);
-
-    this.simulate();
+    this.events.on("wake", () => this.setupBattle());
+    this.setupBattle();
   }
 
   update(time: number, delta: number) {
@@ -228,6 +205,29 @@ export default class Battle extends Phaser.Scene {
     }
 
     this.delayStep += 1;
+  }
+
+  setupBattle() {
+    this.clearFields();
+
+    this.myField.contents = [...saveData.units]
+      .reverse()
+      .map((unit) => createUnitFromType(this.add, unit.type, unit));
+
+    this.opponentsField.contents = [
+      createUnitFromType(this.add, getRandomUnitType(), { facingDir: -1 }),
+      createUnitFromType(this.add, getRandomUnitType(), { facingDir: -1 }),
+      createUnitFromType(this.add, getRandomUnitType(), { facingDir: -1 }),
+      createUnitFromType(this.add, getRandomUnitType(), { facingDir: -1 }),
+      createUnitFromType(this.add, getRandomUnitType(), { facingDir: -1 }),
+      createUnitFromType(this.add, getRandomUnitType(), { facingDir: -1 }),
+      createUnitFromType(this.add, getRandomUnitType(), { facingDir: -1 }),
+    ];
+
+    this.myField.positionContent(1);
+    this.opponentsField.positionContent(1);
+
+    this.simulate();
   }
 
   getCurrentEvent(): TTimelineEvent | undefined {
@@ -450,16 +450,20 @@ export default class Battle extends Phaser.Scene {
       index += 1;
     }
 
-    this.myField.contents.forEach((content) => content.delete());
-    this.opponentsField.contents.forEach((content) => content.delete());
-    this.myField.contents = [];
-    this.opponentsField.contents = [];
+    this.clearFields();
 
     if (index === maxSteps) {
       console.log(`Error, did not reach finality in ${maxSteps} steps`);
     } else {
       console.log(`Done in ${index} steps`);
     }
+  }
+
+  clearFields() {
+    this.myField.contents.forEach((content) => content.delete());
+    this.opponentsField.contents.forEach((content) => content.delete());
+    this.myField.contents = [];
+    this.opponentsField.contents = [];
   }
 
   goToShop() {

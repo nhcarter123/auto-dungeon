@@ -76,8 +76,8 @@ export class Unit extends Good {
       fontFamily: "Verdana",
       strokeThickness: 1,
       align: "center",
-      fixedWidth: numberSize,
-      fixedHeight: numberSize,
+      fixedWidth: numberSize + 4,
+      fixedHeight: numberSize + 4,
     };
 
     this.gameObject.flipX = this.facingDir * this.imageData.startingDir > 0;
