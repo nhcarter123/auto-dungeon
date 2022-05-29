@@ -6,6 +6,8 @@ import moment from "moment";
 import { EScene, screenHeight, screenWidth } from "../config";
 import { lerp } from "../utils";
 import { PlanningField, ReorderStatus } from "../objects/fields/planningField";
+import { EEventType, TShopEvent } from "./battle";
+import { animateBuff } from "../animations/buff";
 
 export enum EMouseEvent {
   PointerDown = "pointerdown",
@@ -13,6 +15,8 @@ export enum EMouseEvent {
   PointerOut = "pointerout",
   PointerUp = "pointerup",
 }
+
+const EVENT_DELAY = 60;
 
 export default class Planning extends Phaser.Scene {
   private field: PlanningField;
@@ -25,6 +29,13 @@ export default class Planning extends Phaser.Scene {
   // private selectedOffsetY: number;
   private mouseClicked: boolean;
   private mouseReleased: boolean;
+  private canInteract: boolean;
+  private eventQueue: TShopEvent[];
+  private currentEvent: TShopEvent | undefined;
+  private delayStep: number;
+  private durationStep: number;
+  private clickedNextButton: boolean;
+  private buffObjects: Phaser.GameObjects.Arc[];
 
   constructor() {
     super(EScene.Planning);
@@ -37,6 +48,12 @@ export default class Planning extends Phaser.Scene {
     // this.selectedOffsetY = 0;
     this.mouseClicked = false;
     this.mouseReleased = false;
+    this.canInteract = true;
+    this.eventQueue = [];
+    this.delayStep = 0;
+    this.durationStep = 0;
+    this.clickedNextButton = false;
+    this.buffObjects = [];
   }
 
   preload() {
@@ -73,7 +90,7 @@ export default class Planning extends Phaser.Scene {
       EImageKey.NextButton,
       screenWidth - 150,
       screenHeight - 100,
-      this.goToBattle.bind(this)
+      this.endTurn.bind(this)
     );
     this.field.create(this.add);
     this.shop.create(this.add);
@@ -91,6 +108,34 @@ export default class Planning extends Phaser.Scene {
 
   update(time: number, delta: number) {
     super.update(time, delta);
+
+    if (!this.currentEvent && this.eventQueue.length) {
+      this.currentEvent = this.eventQueue.pop();
+    }
+
+    if (!this.currentEvent && this.clickedNextButton) {
+      this.goToBattle();
+    }
+
+    if (this.currentEvent) {
+      this.canInteract = false;
+
+      if (this.delayStep > EVENT_DELAY) {
+        if (this.currentEvent) {
+          if (this.durationStep > this.currentEvent.duration) {
+            this.durationStep = 0;
+            this.delayStep = 0;
+            this.currentEvent = undefined;
+          } else {
+            this.animateEvent();
+          }
+        }
+
+        this.durationStep += 1;
+      }
+
+      this.delayStep += 1;
+    }
 
     const showSellButton =
       Boolean(this.selected) && !this.shop.contains(this.selected?.id || "");
@@ -139,7 +184,7 @@ export default class Planning extends Phaser.Scene {
 
     let hovered: Good | undefined;
 
-    if (!this.selected || reorderStatus.mergingUnit) {
+    if (this.canInteract && (!this.selected || reorderStatus.mergingUnit)) {
       hovered = this.field.hoverContent(mouseX, mouseY);
 
       if (!hovered) {
@@ -211,6 +256,42 @@ export default class Planning extends Phaser.Scene {
       this.field.hoveredUnitId = "";
       this.selected = undefined;
     }
+  }
+
+  animateEvent() {
+    if (this.currentEvent) {
+      switch (this.currentEvent.type) {
+        case EEventType.Buff:
+          this.buffObjects = animateBuff(
+            this.currentEvent,
+            this.field.contents,
+            this.buffObjects,
+            this.add,
+            this.durationStep
+          );
+          break;
+      }
+    }
+  }
+
+  setInteractive(interactive: boolean) {
+    this.rollButton && (this.rollButton.disabled = !interactive);
+    this.nextButton && (this.nextButton.disabled = !interactive);
+    this.canInteract = false;
+  }
+
+  endTurn() {
+    this.clickedNextButton = true;
+    this.setInteractive(false);
+
+    // trigger end turn events
+    this.field.contents.forEach((content) => {
+      const endTurnEvent = content.createEndTurnEvent(this.field);
+
+      if (endTurnEvent) {
+        this.eventQueue.push(endTurnEvent);
+      }
+    });
   }
 
   goToBattle() {

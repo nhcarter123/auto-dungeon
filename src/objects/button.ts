@@ -6,6 +6,7 @@ import { EMouseEvent } from "../scenes/planning";
 export class Button {
   public gameObject: Phaser.GameObjects.Image;
   public hovered: boolean;
+  public disabled: boolean;
   readonly scale: number;
   readonly onClick: Function;
 
@@ -27,15 +28,18 @@ export class Button {
     this.scale = 0.75;
     this.gameObject.scale = this.scale;
     this.onClick = onClick;
+    this.disabled = false;
   }
 
   click() {
-    this.gameObject.scale = this.scale - 0.1;
-    this.onClick();
+    if (!this.disabled) {
+      this.gameObject.scale = this.scale - 0.1;
+      this.onClick();
+    }
   }
 
   update(allowHover: boolean) {
-    const scaleMod = this.hovered && allowHover ? 1.05 : 1;
+    const scaleMod = this.hovered && allowHover && !this.disabled ? 1.05 : 1;
 
     this.gameObject.scale = lerp(
       this.gameObject.scale,

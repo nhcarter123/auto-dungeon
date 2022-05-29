@@ -1,8 +1,9 @@
 import Phaser from "phaser";
 import { nanoid } from "nanoid";
 import { lerp } from "../../utils";
-import { TEvent } from "../../scenes/battle";
+import { TBattleEvent, TShopEvent } from "../../scenes/battle";
 import { Battlefield } from "../fields/battlefield";
+import { PlanningField } from "../fields/planningField";
 
 export const MAX_XP = 5;
 
@@ -197,7 +198,11 @@ export class Unit {
   createDeathEvent(
     myField: Battlefield,
     opponentsField: Battlefield
-  ): TEvent | undefined {
+  ): TBattleEvent | undefined {
+    return;
+  }
+
+  createEndTurnEvent(field: PlanningField): TShopEvent | undefined {
     return;
   }
 

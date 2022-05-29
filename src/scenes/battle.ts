@@ -12,6 +12,8 @@ import { Skeleton } from "../objects/units/skeleton";
 import { Ogre } from "../objects/units/ogre";
 import { Golem } from "../objects/units/golem";
 import { find, pick } from "lodash";
+import { animateFight } from "../animations/fight";
+import { animateBuff } from "../animations/buff";
 
 const fastForward = 1;
 const EVENT_DELAY = 20;
@@ -40,13 +42,14 @@ interface IEvent {
   duration: number;
 }
 
-interface IBuffEvent extends IEvent {
+export interface IBuffEvent extends IEvent {
   type: EEventType.Buff;
-  buffAmount: number;
+  attackAmount: number;
+  healthAmount: number;
   sourceUnitId: string;
 }
 
-interface IFightEvent extends IEvent {
+export interface IFightEvent extends IEvent {
   type: EEventType.Fight;
   doesLeftUnitSurvive: boolean;
   doesRightUnitSurvive: boolean;
@@ -57,9 +60,10 @@ interface IResultEvent extends IEvent {
   result: EResult;
 }
 
-export type TEvent = IFightEvent | IBuffEvent | IResultEvent;
+export type TBattleEvent = IFightEvent | IBuffEvent | IResultEvent;
+export type TShopEvent = IBuffEvent;
 
-type TTimelineEvent = TEvent & {
+type TTimelineEvent = TBattleEvent & {
   myUnits: TReducedUnitData[];
   opponentsUnits: TReducedUnitData[];
 };
@@ -84,8 +88,8 @@ export const createUnitFromType = (
 export default class Battle extends Phaser.Scene {
   private myField: Battlefield;
   private opponentsField: Battlefield;
-  private eventQueue: TEvent[];
-  private simulatedEvent: TEvent | undefined;
+  private eventQueue: TBattleEvent[];
+  private simulatedEvent: TBattleEvent | undefined;
   private timeline: TTimelineEvent[];
   private timelineEvent: TTimelineEvent | undefined;
   private currentEventIndex: number;
@@ -156,20 +160,20 @@ export default class Battle extends Phaser.Scene {
     ];
 
     this.opponentsField.contents = [
-      createUnitFromType(this.add, EUnitType.Skeleton, { facingDir: -1 }),
-      createUnitFromType(this.add, EUnitType.Skeleton, { facingDir: -1 }),
-      createUnitFromType(this.add, EUnitType.Skeleton, { facingDir: -1 }),
-      createUnitFromType(this.add, EUnitType.Skeleton, { facingDir: -1 }),
-      createUnitFromType(this.add, EUnitType.Skeleton, { facingDir: -1 }),
-      createUnitFromType(this.add, EUnitType.Skeleton, { facingDir: -1 }),
-      createUnitFromType(this.add, EUnitType.Skeleton, { facingDir: -1 }),
-      // createUnitFromType(this.add, getRandomUnitType(), { facingDir: -1 }),
-      // createUnitFromType(this.add, getRandomUnitType(), { facingDir: -1 }),
-      // createUnitFromType(this.add, getRandomUnitType(), { facingDir: -1 }),
-      // createUnitFromType(this.add, getRandomUnitType(), { facingDir: -1 }),
-      // createUnitFromType(this.add, getRandomUnitType(), { facingDir: -1 }),
-      // createUnitFromType(this.add, getRandomUnitType(), { facingDir: -1 }),
-      // createUnitFromType(this.add, getRandomUnitType(), { facingDir: -1 }),
+      // createUnitFromType(this.add, EUnitType.Skeleton, { facingDir: -1 }),
+      // createUnitFromType(this.add, EUnitType.Skeleton, { facingDir: -1 }),
+      // createUnitFromType(this.add, EUnitType.Skeleton, { facingDir: -1 }),
+      // createUnitFromType(this.add, EUnitType.Skeleton, { facingDir: -1 }),
+      // createUnitFromType(this.add, EUnitType.Skeleton, { facingDir: -1 }),
+      // createUnitFromType(this.add, EUnitType.Skeleton, { facingDir: -1 }),
+      // createUnitFromType(this.add, EUnitType.Skeleton, { facingDir: -1 }),
+      createUnitFromType(this.add, getRandomUnitType(), { facingDir: -1 }),
+      createUnitFromType(this.add, getRandomUnitType(), { facingDir: -1 }),
+      createUnitFromType(this.add, getRandomUnitType(), { facingDir: -1 }),
+      createUnitFromType(this.add, getRandomUnitType(), { facingDir: -1 }),
+      createUnitFromType(this.add, getRandomUnitType(), { facingDir: -1 }),
+      createUnitFromType(this.add, getRandomUnitType(), { facingDir: -1 }),
+      createUnitFromType(this.add, getRandomUnitType(), { facingDir: -1 }),
     ];
 
     this.input.keyboard.on("keydown", (event: { keyCode: number }) => {
@@ -300,14 +304,6 @@ export default class Battle extends Phaser.Scene {
 
           leftUnit.health -= rightUnit.attack;
           rightUnit.health -= leftUnit.attack;
-
-          if (leftUnit.health <= 0) {
-            this.handleDeath(leftUnit, this.myField);
-          }
-          if (rightUnit.health <= 0) {
-            this.handleDeath(rightUnit, this.opponentsField);
-          }
-
           break;
         case EEventType.Buff:
           const sourceUnitId = this.simulatedEvent.sourceUnitId;
@@ -329,202 +325,49 @@ export default class Battle extends Phaser.Scene {
               );
 
               if (unit) {
-                unit.attack += this.simulatedEvent.buffAmount;
+                unit.attack += this.simulatedEvent.attackAmount;
+                unit.health += this.simulatedEvent.healthAmount;
               }
             }
 
-            field.removeContent(sourceUnitId);
-            sourceUnit.delete();
+            if (!sourceUnit.visible) {
+              field.removeContent(sourceUnitId);
+              sourceUnit.delete();
+            }
           }
           break;
       }
+
+      // handle death events
+      [...this.myField.contents, ...this.opponentsField.contents].forEach(
+        (content) => {
+          if (content.health <= 0) {
+            this.handleDeath(content);
+          }
+        }
+      );
     }
   }
 
   animateEvent() {
     if (this.timelineEvent) {
-      const pct = this.durationStep / this.timelineEvent.duration;
-      const hitTime = Math.round(this.timelineEvent.duration * 0.4);
-
       switch (this.timelineEvent.type) {
         case EEventType.Fight:
-          const leftUnit = find(
-            this.myField.contents,
-            (content) => this.timelineEvent?.affectedUnitIds[0] === content.id
+          animateFight(
+            this.timelineEvent,
+            this.myField,
+            this.opponentsField,
+            this.durationStep
           );
-          const rightUnit = find(
-            this.opponentsField.contents,
-            (content) => this.timelineEvent?.affectedUnitIds[1] === content.id
-          );
-
-          if (!leftUnit || !rightUnit) {
-            console.log("Error: Unit is missing!");
-            return;
-          }
-
-          if (this.durationStep === hitTime) {
-            leftUnit.health -= rightUnit.attack;
-            rightUnit.health -= leftUnit.attack;
-          }
-
-          const fAngle1 = -0.4;
-          const rot = rotateTowardAngle(0, 0.2, 0, fAngle1, pct);
-          if (rot) {
-            leftUnit.gameObject.rotation = rot;
-            rightUnit.gameObject.rotation = -rot;
-          }
-
-          const fAngle2 = 0.7;
-          const rot2 = rotateTowardAngle(0.3, 0.4, fAngle1, fAngle2, pct);
-          if (rot2) {
-            leftUnit.gameObject.rotation = rot2;
-            rightUnit.gameObject.rotation = -rot2;
-          }
-
-          const rot3 = rotateTowardAngle(0.6, 0.8, fAngle2, 0, pct);
-          const rot4 = rotateTowardAngle(0.4, 1, fAngle2, -8, pct);
-
-          if (this.timelineEvent.doesLeftUnitSurvive) {
-            if (rot3) {
-              leftUnit.gameObject.rotation = rot3;
-            }
-          } else if (rot4) {
-            leftUnit.gameObject.rotation = rot4;
-          }
-
-          if (this.timelineEvent.doesRightUnitSurvive) {
-            if (rot3) {
-              rightUnit.gameObject.rotation = -rot3;
-            }
-          } else if (rot4) {
-            rightUnit.gameObject.rotation = -rot4;
-          }
-
-          const backupDist = -40;
-
-          const movement1 = moveTowards(0, 0.3, 0, backupDist, pct);
-          if (movement1) {
-            leftUnit.animX = movement1;
-            rightUnit.animX = -movement1;
-          }
-
-          const moveDist = 150;
-          const movement2 = moveTowards(0.3, 0.4, backupDist, moveDist, pct);
-          if (movement2) {
-            leftUnit.animX = movement2;
-            rightUnit.animX = -movement2;
-          }
-
-          const startMove2 = 0.4;
-          const finishMove2 = 0.65;
-
-          if (pct >= startMove2 && pct <= finishMove2) {
-            const movement =
-              35 *
-              Math.sin(
-                Math.PI *
-                  Math.pow((pct - startMove2) / (finishMove2 - startMove2), 0.7)
-              );
-
-            if (this.timelineEvent.doesLeftUnitSurvive) {
-              leftUnit.animX = backupDist + moveDist - movement;
-            }
-            if (this.timelineEvent.doesRightUnitSurvive) {
-              rightUnit.animX = -backupDist - moveDist + movement;
-            }
-          }
-
-          const startMove3 = 0.8;
-          const finishMove3 = 1;
-
-          if (pct >= startMove3 && pct <= finishMove3) {
-            const movement =
-              Math.sin(
-                (Math.PI / 2) *
-                  ((pct - startMove3) / (finishMove3 - startMove3))
-              ) *
-              (moveDist + backupDist);
-
-            if (this.timelineEvent.doesLeftUnitSurvive) {
-              leftUnit.animX = backupDist + moveDist - movement;
-            }
-            if (this.timelineEvent.doesRightUnitSurvive) {
-              rightUnit.animX = -backupDist - moveDist + movement;
-            }
-          }
-
-          const movement3 = moveTowards(0.4, 1, 0, 1400, pct);
-          if (!this.timelineEvent.doesLeftUnitSurvive && movement3) {
-            leftUnit.animX = backupDist + moveDist - movement3;
-            leftUnit.animY = -movement3 / 4;
-          }
-          if (!this.timelineEvent.doesRightUnitSurvive && movement3) {
-            rightUnit.animX = -backupDist - moveDist + movement3;
-            rightUnit.animY = -movement3 / 4;
-          }
-
-          // if (pct === 1) {
-          //   if (!this.timelineEvent.doesLeftUnitSurvive) {
-          //     this.myField.removeContent(leftUnit.id);
-          //     leftUnit.delete();
-          //   }
-          //   if (!this.timelineEvent.doesRightUnitSurvive) {
-          //     this.opponentsField.removeContent(rightUnit.id);
-          //     rightUnit.delete();
-          //   }
-          // }
-
           break;
         case EEventType.Buff:
-          const sourceUnitId = this.timelineEvent.sourceUnitId;
-          const sourceUnit = find(
+          animateBuff(
+            this.timelineEvent,
             [...this.myField.contents, ...this.opponentsField.contents],
-            (content) => sourceUnitId === content.id
+            this.buffObjects,
+            this.add,
+            this.durationStep
           );
-
-          if (sourceUnit) {
-            const units = this.timelineEvent.affectedUnitIds
-              .map((id) =>
-                find(
-                  [...this.myField.contents, ...this.opponentsField.contents],
-                  (content) => id === content.id
-                )
-              )
-              .flatMap((v) => (v ? [v] : []));
-
-            if (!this.buffObjects.length) {
-              units.forEach((unit) => {
-                const buffObject = this.add.circle(
-                  unit.x,
-                  unit.y,
-                  10,
-                  0xd9d9d9
-                );
-                this.buffObjects.push(buffObject);
-              });
-            }
-
-            for (let i = 0; i < units.length; i++) {
-              const unit = units[i];
-              const buffObject = this.buffObjects[i];
-
-              const xPos = moveTowards(0, 1, sourceUnit.x, unit.x, pct);
-              const yPos = sourceUnit.y - 60 * Math.sin(Math.PI * pct) - 40;
-
-              if (xPos && yPos) {
-                buffObject.x = xPos;
-                buffObject.y = yPos;
-              }
-            }
-
-            if (pct === 1) {
-              this.clearBuffObjects();
-            }
-
-            // this.timelineEvent.affectedUnits.forEach((unit) => {
-            //   unit.attack += 1;
-            // });
-          }
           break;
       }
     }
@@ -535,13 +378,14 @@ export default class Battle extends Phaser.Scene {
     this.buffObjects = [];
   }
 
-  handleDeath(unit: Unit, field: Battlefield) {
+  handleDeath(unit: Unit) {
     const deathEvent = unit.createDeathEvent(this.myField, this.opponentsField);
     if (deathEvent) {
       unit.visible = false;
       this.eventQueue.push(deathEvent);
     } else {
-      field.removeContent(unit.id);
+      this.myField.removeContent(unit.id);
+      this.opponentsField.removeContent(unit.id);
       unit.delete();
     }
   }
@@ -568,8 +412,6 @@ export default class Battle extends Phaser.Scene {
           // unit.y && (unitInField.y = unit.y);
           newUnits.push(unitInField);
         } else if (unit.id) {
-          console.log("created unit");
-
           newUnits.push(
             createUnitFromType(this.add, unit.type, {
               ...unit,
@@ -632,8 +474,6 @@ export default class Battle extends Phaser.Scene {
     this.myField.contents = [];
     this.opponentsField.contents = [];
 
-    console.log(this.timeline);
-
     if (index === maxSteps) {
       console.log(`Error, did not reach finality in ${maxSteps} steps`);
     } else {
@@ -653,37 +493,6 @@ const reduceUnit = (unit: Unit): TReducedUnitData => {
     "y",
     "visible",
   ]);
-};
-
-const rotateTowardAngle = (
-  startRotation: number,
-  finishRotation: number,
-  startAngle: number,
-  finishAngle: number,
-  percentage: number
-) => {
-  if (percentage >= startRotation && percentage <= finishRotation) {
-    return (
-      (startAngle || 0) +
-      ((finishAngle - startAngle) * (percentage - startRotation)) /
-        (finishRotation - startRotation)
-    );
-  }
-};
-
-const moveTowards = (
-  startMove: number,
-  finishMove: number,
-  start: number,
-  finish: number,
-  percentage: number
-) => {
-  if (percentage >= startMove && percentage <= finishMove) {
-    return (
-      start +
-      ((percentage - startMove) / (finishMove - startMove)) * (finish - start)
-    );
-  }
 };
 
 export const calculateDuration = (speed: EEventSpeed) => {

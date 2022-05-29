@@ -5,6 +5,6 @@ import BattleScene from "./scenes/battle";
 
 new Phaser.Game(
   Object.assign(config, {
-    scene: [BattleScene, PlanningScene],
+    scene: [PlanningScene, BattleScene],
   })
 );
