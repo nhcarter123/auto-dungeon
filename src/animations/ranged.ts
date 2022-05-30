@@ -1,11 +1,11 @@
 import Phaser from "phaser";
 import { find } from "lodash";
-import { IBuffEvent } from "../scenes/battle";
+import { IRangedEvent } from "../scenes/battle";
 import { moveTowards } from "../helpers/animation";
 import { Unit } from "../objects/good/units/unit";
 
-export const animateBuff = (
-  e: IBuffEvent,
+export const animateRanged = (
+  e: IRangedEvent,
   units: Unit[],
   animationObjects: Phaser.GameObjects.Arc[],
   add: Phaser.GameObjects.GameObjectFactory,
@@ -42,20 +42,6 @@ export const animateBuff = (
     }
 
     if (pct === 1) {
-      for (const id of e.affectedUnitIds) {
-        const unit = find(
-          units,
-          (content) => e.affectedUnitIds[0] === content.id
-        );
-
-        // This is not good to do in the animation but it is needed for shop buff event.
-        // Maybe we could find another place for this.
-        if (unit) {
-          unit.attack += e.attackAmount;
-          unit.health += e.healthAmount;
-        }
-      }
-
       animationObjects.forEach((obj) => obj.destroy());
       return [];
     }

@@ -13,6 +13,7 @@ import {
 } from "../helpers/unit";
 import { calculateDuration } from "../helpers/math";
 import { EImageKey, Unit } from "../objects/good/units/unit";
+import { animateRanged } from "../animations/ranged";
 
 const fastForward = 1;
 const EVENT_DELAY = 30;
@@ -40,6 +41,7 @@ interface IEvent {
   type: EEventType;
   affectedUnitIds: string[];
   duration: number;
+  perishedUnitIds: string[];
 }
 
 export interface IBuffEvent extends IEvent {
@@ -51,14 +53,12 @@ export interface IBuffEvent extends IEvent {
 
 export interface IFightEvent extends IEvent {
   type: EEventType.Fight;
-  perishedUnitIds: string[];
 }
 
 export interface IRangedEvent extends IEvent {
   type: EEventType.Ranged;
   attackAmount: number;
   sourceId: string;
-  perishedUnitIds: string[];
 }
 
 interface IResultEvent extends IEvent {
@@ -89,7 +89,7 @@ export default class Battle extends Phaser.Scene {
   private delayStep: number;
   private durationStep: number;
   private paused: boolean;
-  private buffObjects: Phaser.GameObjects.Arc[];
+  private animationObjects: Phaser.GameObjects.Arc[];
 
   constructor() {
     super(EScene.Battle);
@@ -99,7 +99,7 @@ export default class Battle extends Phaser.Scene {
     this.delayStep = 0;
     this.durationStep = 0;
     this.currentEventIndex = -1;
-    this.buffObjects = [];
+    this.animationObjects = [];
     this.paused = false;
 
     const halfScreenWidth = screenWidth / 2;
@@ -247,39 +247,47 @@ export default class Battle extends Phaser.Scene {
     return this.timeline[this.currentEventIndex];
   }
 
-  createFrontFightEvent() {
+  handleBeforeUnitInFrontAttacksEvent() {
+    const mySecondUnit = this.myField.contents[1];
+    const theirSecondUnit = this.opponentsField.contents[1];
+
+    if (mySecondUnit && !mySecondUnit.beforeAttackOnCooldown) {
+      mySecondUnit.beforeAttackOnCooldown = true;
+      const event = mySecondUnit.createBeforeUnitInFrontAttacksEvent(
+        this.myField,
+        this.opponentsField
+      );
+      if (event) {
+        return this.eventQueue.push(event);
+      }
+    }
+    if (theirSecondUnit && !theirSecondUnit.beforeAttackOnCooldown) {
+      theirSecondUnit.beforeAttackOnCooldown = true;
+      const event = theirSecondUnit.createBeforeUnitInFrontAttacksEvent(
+        this.myField,
+        this.opponentsField
+      );
+      if (event) {
+        return this.eventQueue.push(event);
+      }
+    }
+  }
+
+  handleFrontFightEvent() {
     const myFirstUnit = this.myField.contents[0];
     const theirFirstUnit = this.opponentsField.contents[0];
     const mySecondUnit = this.myField.contents[1];
     const theirSecondUnit = this.opponentsField.contents[1];
 
-    if (myFirstUnit && theirFirstUnit) {
-      this.eventQueue.push({
-        type: EEventType.Fight,
-        affectedUnitIds: [myFirstUnit.id, theirFirstUnit.id],
-        duration: calculateDuration(EEventSpeed.Medium),
-        perishedUnitIds: [],
-      });
+    this.eventQueue.push({
+      type: EEventType.Fight,
+      affectedUnitIds: [myFirstUnit.id, theirFirstUnit.id],
+      duration: calculateDuration(EEventSpeed.Medium),
+      perishedUnitIds: [],
+    });
 
-      if (mySecondUnit) {
-        const event = mySecondUnit.createUnitInFrontAttacksEvent(
-          this.myField,
-          this.opponentsField
-        );
-        if (event) {
-          this.eventQueue.push(event);
-        }
-      }
-      if (theirSecondUnit) {
-        const event = theirSecondUnit.createUnitInFrontAttacksEvent(
-          this.myField,
-          this.opponentsField
-        );
-        if (event) {
-          this.eventQueue.push(event);
-        }
-      }
-    }
+    mySecondUnit && (mySecondUnit.beforeAttackOnCooldown = false);
+    theirSecondUnit && (theirSecondUnit.beforeAttackOnCooldown = false);
   }
 
   createResultEvent() {
@@ -295,11 +303,13 @@ export default class Battle extends Phaser.Scene {
       affectedUnitIds: [],
       duration: calculateDuration(EEventSpeed.Medium),
       result: result,
+      perishedUnitIds: [],
     });
   }
 
   processEvent() {
     if (this.simulatedEvent) {
+      // Be very careful with this as it is a copy an does not get updated
       const units = [...this.myField.contents, ...this.opponentsField.contents];
 
       switch (this.simulatedEvent.type) {
@@ -338,6 +348,13 @@ export default class Battle extends Phaser.Scene {
                 unit.health += this.simulatedEvent.healthAmount;
               }
             }
+
+            // Bit of an ugly edge case for
+            if (!sourceUnit.visible) {
+              this.myField.removeContent(sourceUnit.id);
+              this.opponentsField.removeContent(sourceUnit.id);
+              sourceUnit.delete();
+            }
           }
           break;
         }
@@ -363,20 +380,12 @@ export default class Battle extends Phaser.Scene {
       }
 
       // handle death events
-      for (const unit of units) {
-        // forget the purpose of this, will have to check again
-        if (!unit.visible) {
-          this.myField.removeContent(unit.id);
-          this.opponentsField.removeContent(unit.id);
-          unit.delete();
-        } else if (unit.health <= 0) {
-          if (
-            this.simulatedEvent.type === EEventType.Ranged ||
-            this.simulatedEvent.type === EEventType.Fight
-          ) {
-            this.simulatedEvent.perishedUnitIds.push(unit.id);
-          }
-
+      for (const unit of [
+        ...this.myField.contents,
+        ...this.opponentsField.contents,
+      ]) {
+        if (unit.health <= 0) {
+          this.simulatedEvent.perishedUnitIds.push(unit.id);
           this.handleDeath(unit);
         }
       }
@@ -398,7 +407,16 @@ export default class Battle extends Phaser.Scene {
           animateBuff(
             this.timelineEvent,
             [...this.myField.contents, ...this.opponentsField.contents],
-            this.buffObjects,
+            this.animationObjects,
+            this.add,
+            this.durationStep
+          );
+          break;
+        case EEventType.Ranged:
+          animateRanged(
+            this.timelineEvent,
+            [...this.myField.contents, ...this.opponentsField.contents],
+            this.animationObjects,
             this.add,
             this.durationStep
           );
@@ -407,20 +425,26 @@ export default class Battle extends Phaser.Scene {
     }
   }
 
-  clearBuffObjects() {
-    this.buffObjects.forEach((obj) => obj.destroy());
-    this.buffObjects = [];
+  clearAnimationObjects() {
+    this.animationObjects.forEach((obj) => obj.destroy());
+    this.animationObjects = [];
   }
 
   handleDeath(unit: Unit) {
-    const deathEvent = unit.createDeathEvent(this.myField, this.opponentsField);
-    if (deathEvent) {
-      unit.visible = false;
-      this.eventQueue.push(deathEvent);
-    } else {
-      this.myField.removeContent(unit.id);
-      this.opponentsField.removeContent(unit.id);
-      unit.delete();
+    if (unit.visible) {
+      const deathEvent = unit.createDeathEvent(
+        this.myField,
+        this.opponentsField
+      );
+
+      if (deathEvent) {
+        unit.visible = false;
+        this.eventQueue.push(deathEvent);
+      } else {
+        this.myField.removeContent(unit.id);
+        this.opponentsField.removeContent(unit.id);
+        unit.delete();
+      }
     }
   }
 
@@ -460,7 +484,7 @@ export default class Battle extends Phaser.Scene {
       (content) => !targetUnits.some((unit) => unit.id === content.id)
     );
     unitsToRemove.forEach((unit) => unit.delete());
-    this.clearBuffObjects();
+    this.clearAnimationObjects();
 
     field.contents = newUnits;
   }
@@ -493,12 +517,21 @@ export default class Battle extends Phaser.Scene {
       this.processEvent();
 
       if (!this.eventQueue.length) {
-        this.createFrontFightEvent();
-
-        // trigger pre-combat events for all units
-
-        if (!this.eventQueue.length) {
+        if (
+          !this.myField.contents.length ||
+          !this.opponentsField.contents.length
+        ) {
           this.createResultEvent();
+        } else {
+          if (!this.eventQueue.length) {
+            this.handleBeforeUnitInFrontAttacksEvent();
+          }
+
+          if (!this.eventQueue.length) {
+            this.handleFrontFightEvent();
+          }
+
+          // trigger pre-combat events for all units
         }
       }
 

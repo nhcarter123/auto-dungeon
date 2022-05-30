@@ -35,7 +35,7 @@ export class Spider extends Unit {
     return this.getLevel();
   }
 
-  createUnitInFrontAttacksEvent(
+  createBeforeUnitInFrontAttacksEvent(
     myField: Battlefield,
     opponentsField: Battlefield
   ): IRangedEvent {
@@ -45,7 +45,7 @@ export class Spider extends Unit {
       type: EEventType.Ranged,
       attackAmount: this.getRangedAttackAmount(),
       sourceId: this.id,
-      duration: calculateDuration(EEventSpeed.Medium),
+      duration: calculateDuration(EEventSpeed.Fast),
       affectedUnitIds: [enemyField.getRandomContent().id],
       perishedUnitIds: [],
     };

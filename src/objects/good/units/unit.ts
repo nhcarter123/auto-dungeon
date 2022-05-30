@@ -54,6 +54,7 @@ export class Unit extends Good {
   public levelObject: Phaser.GameObjects.Sprite;
   public xp: number;
   public visible: boolean;
+  public beforeAttackOnCooldown: boolean;
   public type: EUnitType;
 
   constructor(
@@ -72,6 +73,7 @@ export class Unit extends Good {
     this.xp = overrides.xp === undefined ? 1 : overrides.xp;
     this.visible = overrides.visible === undefined ? true : overrides.visible;
     this.type = type;
+    this.beforeAttackOnCooldown = false;
 
     const fontStyle = {
       fontSize: "20px",
@@ -192,7 +194,7 @@ export class Unit extends Good {
     return;
   }
 
-  createUnitInFrontAttacksEvent(
+  createBeforeUnitInFrontAttacksEvent(
     myField: Battlefield,
     opponentsField: Battlefield
   ): TBattleEvent | undefined {

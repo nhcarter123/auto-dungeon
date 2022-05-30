@@ -46,6 +46,7 @@ export class Ogre extends Unit {
         sourceId: this.id,
         duration: calculateDuration(EEventSpeed.Fast),
         affectedUnitIds: [field.contents[index + 1].id],
+        perishedUnitIds: [],
       };
     }
   }

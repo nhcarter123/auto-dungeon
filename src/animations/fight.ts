@@ -3,7 +3,6 @@ import { IFightEvent } from "../scenes/battle";
 import { Field } from "../objects/fields/field";
 import { moveTowards, rotateTowardAngle } from "../helpers/animation";
 import { Unit } from "../objects/good/units/unit";
-import { reduceUnit } from "../helpers/unit";
 
 export const animateFight = (
   e: IFightEvent,
@@ -24,11 +23,7 @@ export const animateFight = (
   );
 
   if (!leftUnit || !rightUnit) {
-    console.log(
-      `Error: Unit is missing! left: ${
-        leftUnit ? JSON.stringify(reduceUnit(leftUnit)) : leftUnit
-      } right: ${rightUnit ? JSON.stringify(reduceUnit(rightUnit)) : rightUnit}`
-    );
+    console.log(` Unit is missing!`);
     return;
   }
 

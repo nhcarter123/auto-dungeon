@@ -40,7 +40,7 @@ export default class Planning extends Phaser.Scene {
   private delayStep: number;
   private durationStep: number;
   private clickedNextButton: boolean;
-  private buffObjects: Phaser.GameObjects.Arc[];
+  private animationObjects: Phaser.GameObjects.Arc[];
 
   // private selectedOffsetX: number;
   // private selectedOffsetY: number;
@@ -61,7 +61,7 @@ export default class Planning extends Phaser.Scene {
     this.delayStep = 0;
     this.durationStep = 0;
     this.clickedNextButton = false;
-    this.buffObjects = [];
+    this.animationObjects = [];
   }
 
   preload() {
@@ -316,10 +316,10 @@ export default class Planning extends Phaser.Scene {
     if (this.currentEvent) {
       switch (this.currentEvent.type) {
         case EEventType.Buff:
-          this.buffObjects = animateBuff(
+          this.animationObjects = animateBuff(
             this.currentEvent,
             this.field.contents,
-            this.buffObjects,
+            this.animationObjects,
             this.add,
             this.durationStep
           );

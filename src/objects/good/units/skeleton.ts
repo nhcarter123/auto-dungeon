@@ -48,6 +48,7 @@ export class Skeleton extends Unit {
         duration: calculateDuration(EEventSpeed.Fast),
         attackAmount: this.getAttackBuff(),
         healthAmount: 0,
+        perishedUnitIds: [],
       };
     }
   }
