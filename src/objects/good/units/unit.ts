@@ -11,6 +11,7 @@ export enum EUnitType {
   Skeleton = "Skeleton",
   Ogre = "Ogre",
   Golem = "Golem",
+  Spider = "Spider",
 }
 
 export interface IImageData {
@@ -26,6 +27,7 @@ export enum EImageKey {
   NextButton = "NextButton",
   Swamp = "Swamp",
   Skeleton = "Skeleton",
+  Spider = "Spider",
   Ogre = "Ogre",
   Golem = "Golem",
   Level = "Level",
@@ -184,6 +186,13 @@ export class Unit extends Good {
   }
 
   createDeathEvent(
+    myField: Battlefield,
+    opponentsField: Battlefield
+  ): TBattleEvent | undefined {
+    return;
+  }
+
+  createUnitInFrontAttacksEvent(
     myField: Battlefield,
     opponentsField: Battlefield
   ): TBattleEvent | undefined {

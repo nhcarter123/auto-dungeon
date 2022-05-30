@@ -1,8 +1,8 @@
+import Phaser from "phaser";
 import { find } from "lodash";
 import { IBuffEvent } from "../scenes/battle";
-import { Unit } from "../objects/units/unit";
 import { moveTowards } from "../helpers/animation";
-import Phaser from "phaser";
+import { Unit } from "../objects/good/units/unit";
 
 export const animateBuff = (
   e: IBuffEvent,
@@ -13,8 +13,8 @@ export const animateBuff = (
 ): Phaser.GameObjects.Arc[] => {
   const pct = step / e.duration;
 
-  const sourceUnitId = e.sourceUnitId;
-  const sourceUnit = find(units, (content) => sourceUnitId === content.id);
+  const sourceId = e.sourceId;
+  const sourceUnit = find(units, (content) => sourceId === content.id);
 
   if (sourceUnit) {
     const affectedUnits = e.affectedUnitIds

@@ -8,6 +8,8 @@ export class GameInfo {
   public y: number;
   public goldIconObject: Phaser.GameObjects.Image;
   public goldObject: Phaser.GameObjects.Text;
+  public turnIconObject: Phaser.GameObjects.Image;
+  public turnObject: Phaser.GameObjects.Text;
   public scale: number;
   public previousGold: number;
 
@@ -30,6 +32,17 @@ export class GameInfo {
       saveData.gold.toString(),
       fontStyle
     );
+
+    const turnOffset = 110;
+
+    this.turnIconObject = add.image(x + turnOffset, y, EImageKey.Gold);
+    this.turnIconObject.scale = this.scale;
+    this.turnObject = add.text(
+      x + 28 + turnOffset,
+      y - 26,
+      saveData.turn.toString(),
+      fontStyle
+    );
   }
 
   update() {
@@ -38,6 +51,8 @@ export class GameInfo {
       this.goldIconObject.scale = this.scale * 0.8;
       this.goldObject.text = saveData.gold.toString();
     }
+
+    this.turnObject.text = saveData.turn.toString();
 
     this.goldIconObject.scale = lerp(
       this.goldIconObject.scale,

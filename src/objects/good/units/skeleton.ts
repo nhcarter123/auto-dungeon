@@ -44,7 +44,7 @@ export class Skeleton extends Unit {
       return {
         type: EEventType.Buff,
         affectedUnitIds: [unitToLeft.id],
-        sourceUnitId: this.id,
+        sourceId: this.id,
         duration: calculateDuration(EEventSpeed.Fast),
         attackAmount: this.getAttackBuff(),
         healthAmount: 0,

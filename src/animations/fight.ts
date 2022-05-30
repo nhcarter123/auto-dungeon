@@ -3,6 +3,7 @@ import { IFightEvent } from "../scenes/battle";
 import { Field } from "../objects/fields/field";
 import { moveTowards, rotateTowardAngle } from "../helpers/animation";
 import { Unit } from "../objects/good/units/unit";
+import { reduceUnit } from "../helpers/unit";
 
 export const animateFight = (
   e: IFightEvent,
@@ -23,7 +24,11 @@ export const animateFight = (
   );
 
   if (!leftUnit || !rightUnit) {
-    console.log("Error: Unit is missing!");
+    console.log(
+      `Error: Unit is missing! left: ${
+        leftUnit ? JSON.stringify(reduceUnit(leftUnit)) : leftUnit
+      } right: ${rightUnit ? JSON.stringify(reduceUnit(rightUnit)) : rightUnit}`
+    );
     return;
   }
 
@@ -49,7 +54,7 @@ export const animateFight = (
   const rot3 = rotateTowardAngle(0.6, 0.8, fAngle2, 0, pct);
   const rot4 = rotateTowardAngle(0.4, 1, fAngle2, -8, pct);
 
-  if (e.doesLeftUnitSurvive) {
+  if (!e.perishedUnitIds.includes(leftUnit.id)) {
     if (rot3) {
       leftUnit.gameObject.rotation = rot3;
     }
@@ -57,7 +62,7 @@ export const animateFight = (
     leftUnit.gameObject.rotation = rot4;
   }
 
-  if (e.doesRightUnitSurvive) {
+  if (!e.perishedUnitIds.includes(rightUnit.id)) {
     if (rot3) {
       rightUnit.gameObject.rotation = -rot3;
     }
@@ -90,10 +95,10 @@ export const animateFight = (
         Math.PI * Math.pow((pct - startMove2) / (finishMove2 - startMove2), 0.7)
       );
 
-    if (e.doesLeftUnitSurvive) {
+    if (!e.perishedUnitIds.includes(leftUnit.id)) {
       leftUnit.animX = backupDist + moveDist - movement;
     }
-    if (e.doesRightUnitSurvive) {
+    if (!e.perishedUnitIds.includes(rightUnit.id)) {
       rightUnit.animX = -backupDist - moveDist + movement;
     }
   }
@@ -108,20 +113,20 @@ export const animateFight = (
       ) *
       (moveDist + backupDist);
 
-    if (e.doesLeftUnitSurvive) {
+    if (!e.perishedUnitIds.includes(leftUnit.id)) {
       leftUnit.animX = backupDist + moveDist - movement;
     }
-    if (e.doesRightUnitSurvive) {
+    if (!e.perishedUnitIds.includes(rightUnit.id)) {
       rightUnit.animX = -backupDist - moveDist + movement;
     }
   }
 
   const movement3 = moveTowards(0.4, 1, 0, 1400, pct);
-  if (!e.doesLeftUnitSurvive && movement3) {
+  if (e.perishedUnitIds.includes(leftUnit.id) && movement3) {
     leftUnit.animX = backupDist + moveDist - movement3;
     leftUnit.animY = -movement3 / 4;
   }
-  if (!e.doesRightUnitSurvive && movement3) {
+  if (e.perishedUnitIds.includes(rightUnit.id) && movement3) {
     rightUnit.animX = -backupDist - moveDist + movement3;
     rightUnit.animY = -movement3 / 4;
   }

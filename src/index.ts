@@ -9,6 +9,7 @@ interface SaveData {
   units: TReducedUnitData[];
   fastForward: number;
   gold: number;
+  turn: number;
 }
 
 const loadFont = (name: string) => {
@@ -26,6 +27,7 @@ export const saveData: SaveData = {
   ],
   fastForward: 1,
   gold: 10,
+  turn: 0,
 };
 
 loadFont("concert_one");

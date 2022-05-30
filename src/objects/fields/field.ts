@@ -93,6 +93,10 @@ export class Field<ContentType extends Good> {
     this.contents.splice(toIndex, 0, element);
   }
 
+  getRandomContent = (): ContentType => {
+    return this.contents[Math.floor(Math.random() * this.contents.length)];
+  };
+
   contains(id: string) {
     return this.contents.some((content) => content.id === id);
   }

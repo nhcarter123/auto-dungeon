@@ -7,10 +7,7 @@ import { PlanningField, ReorderStatus } from "../objects/fields/planningField";
 import { EEventType, TShopEvent } from "./battle";
 import { animateBuff } from "../animations/buff";
 import { saveData } from "../index";
-import {
-  createUnitFromType,
-  reduceUnit,
-} from "../helpers/unit";
+import { createUnitFromType, reduceUnit } from "../helpers/unit";
 import { lerp } from "../helpers/math";
 import { GameInfo } from "../objects/gameInfo";
 import { EImageKey, Unit } from "../objects/good/units/unit";
@@ -74,6 +71,7 @@ export default class Planning extends Phaser.Scene {
     this.load.image(EImageKey.NextButton, "assets/images/button_next.png");
     this.load.image(EImageKey.Swamp, "assets/images/background_swamp.png");
     this.load.image(EImageKey.Skeleton, "assets/images/skeleton.png");
+    this.load.image(EImageKey.Spider, "assets/images/spider.png");
     this.load.image(EImageKey.Ogre, "assets/images/ogre.png");
     this.load.image(EImageKey.Golem, "assets/images/golem.png");
     this.load.spritesheet(EImageKey.Level, "assets/sprites/level/texture.png", {
@@ -130,6 +128,7 @@ export default class Planning extends Phaser.Scene {
   }
 
   setupShop() {
+    saveData.turn += 1;
     saveData.gold = 10;
     this.clearFields();
 

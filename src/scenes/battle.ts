@@ -26,6 +26,7 @@ export enum EEventSpeed {
 export enum EEventType {
   Fight = "Fight",
   Buff = "Buff",
+  Ranged = "Ranged",
   Result = "Result",
 }
 
@@ -45,13 +46,19 @@ export interface IBuffEvent extends IEvent {
   type: EEventType.Buff;
   attackAmount: number;
   healthAmount: number;
-  sourceUnitId: string;
+  sourceId: string;
 }
 
 export interface IFightEvent extends IEvent {
   type: EEventType.Fight;
-  doesLeftUnitSurvive: boolean;
-  doesRightUnitSurvive: boolean;
+  perishedUnitIds: string[];
+}
+
+export interface IRangedEvent extends IEvent {
+  type: EEventType.Ranged;
+  attackAmount: number;
+  sourceId: string;
+  perishedUnitIds: string[];
 }
 
 interface IResultEvent extends IEvent {
@@ -59,7 +66,11 @@ interface IResultEvent extends IEvent {
   result: EResult;
 }
 
-export type TBattleEvent = IFightEvent | IBuffEvent | IResultEvent;
+export type TBattleEvent =
+  | IFightEvent
+  | IBuffEvent
+  | IRangedEvent
+  | IResultEvent;
 export type TShopEvent = IBuffEvent;
 
 type TTimelineEvent = TBattleEvent & {
@@ -114,6 +125,7 @@ export default class Battle extends Phaser.Scene {
     this.load.image(EImageKey.NextButton, "assets/images/button_next.png");
     this.load.image(EImageKey.Swamp, "assets/images/background_swamp.png");
     this.load.image(EImageKey.Skeleton, "assets/images/skeleton.png");
+    this.load.image(EImageKey.Spider, "assets/images/spider.png");
     this.load.image(EImageKey.Ogre, "assets/images/ogre.png");
     this.load.image(EImageKey.Golem, "assets/images/golem.png");
     this.load.spritesheet(EImageKey.Level, "assets/sprites/level/texture.png", {
@@ -208,6 +220,7 @@ export default class Battle extends Phaser.Scene {
   }
 
   setupBattle() {
+    this.currentEventIndex = -1;
     this.clearFields();
 
     this.myField.contents = [...saveData.units]
@@ -237,15 +250,35 @@ export default class Battle extends Phaser.Scene {
   createFrontFightEvent() {
     const myFirstUnit = this.myField.contents[0];
     const theirFirstUnit = this.opponentsField.contents[0];
+    const mySecondUnit = this.myField.contents[1];
+    const theirSecondUnit = this.opponentsField.contents[1];
 
     if (myFirstUnit && theirFirstUnit) {
       this.eventQueue.push({
         type: EEventType.Fight,
         affectedUnitIds: [myFirstUnit.id, theirFirstUnit.id],
         duration: calculateDuration(EEventSpeed.Medium),
-        doesLeftUnitSurvive: myFirstUnit.health - theirFirstUnit.attack > 0,
-        doesRightUnitSurvive: theirFirstUnit.health - myFirstUnit.attack > 0,
+        perishedUnitIds: [],
       });
+
+      if (mySecondUnit) {
+        const event = mySecondUnit.createUnitInFrontAttacksEvent(
+          this.myField,
+          this.opponentsField
+        );
+        if (event) {
+          this.eventQueue.push(event);
+        }
+      }
+      if (theirSecondUnit) {
+        const event = theirSecondUnit.createUnitInFrontAttacksEvent(
+          this.myField,
+          this.opponentsField
+        );
+        if (event) {
+          this.eventQueue.push(event);
+        }
+      }
     }
   }
 
@@ -267,40 +300,35 @@ export default class Battle extends Phaser.Scene {
 
   processEvent() {
     if (this.simulatedEvent) {
+      const units = [...this.myField.contents, ...this.opponentsField.contents];
+
       switch (this.simulatedEvent.type) {
         case EEventType.Fight:
           const leftUnit = find(
-            this.myField.contents,
+            units,
             (content) => this.simulatedEvent?.affectedUnitIds[0] === content.id
           );
           const rightUnit = find(
-            this.opponentsField.contents,
+            units,
             (content) => this.simulatedEvent?.affectedUnitIds[1] === content.id
           );
 
           if (!leftUnit || !rightUnit) {
-            console.log("Error: Unit is missing!");
+            console.log(`Error: Unit is missing!`);
             return;
           }
 
           leftUnit.health -= rightUnit.attack;
           rightUnit.health -= leftUnit.attack;
           break;
-        case EEventType.Buff:
-          const sourceUnitId = this.simulatedEvent.sourceUnitId;
-          const field = this.myField.contains(sourceUnitId)
-            ? this.myField
-            : this.opponentsField;
-
-          const sourceUnit = find(
-            field.contents,
-            (content) => sourceUnitId === content.id
-          );
+        case EEventType.Buff: {
+          const sourceId = this.simulatedEvent.sourceId;
+          const sourceUnit = find(units, (content) => sourceId === content.id);
 
           if (sourceUnit) {
             for (const id of this.simulatedEvent.affectedUnitIds) {
               const unit = find(
-                field.contents,
+                units,
                 (content) =>
                   this.simulatedEvent?.affectedUnitIds[0] === content.id
               );
@@ -310,23 +338,48 @@ export default class Battle extends Phaser.Scene {
                 unit.health += this.simulatedEvent.healthAmount;
               }
             }
+          }
+          break;
+        }
+        case EEventType.Ranged: {
+          const sourceId = this.simulatedEvent.sourceId;
+          const sourceUnit = find(units, (content) => sourceId === content.id);
 
-            if (!sourceUnit.visible) {
-              field.removeContent(sourceUnitId);
-              sourceUnit.delete();
+          if (sourceUnit) {
+            for (const id of this.simulatedEvent.affectedUnitIds) {
+              const unit = find(
+                units,
+                (content) =>
+                  this.simulatedEvent?.affectedUnitIds[0] === content.id
+              );
+
+              if (unit) {
+                unit.health -= this.simulatedEvent.attackAmount;
+              }
             }
           }
           break;
+        }
       }
 
       // handle death events
-      [...this.myField.contents, ...this.opponentsField.contents].forEach(
-        (content) => {
-          if (content.health <= 0 && content.visible) {
-            this.handleDeath(content);
+      for (const unit of units) {
+        // forget the purpose of this, will have to check again
+        if (!unit.visible) {
+          this.myField.removeContent(unit.id);
+          this.opponentsField.removeContent(unit.id);
+          unit.delete();
+        } else if (unit.health <= 0) {
+          if (
+            this.simulatedEvent.type === EEventType.Ranged ||
+            this.simulatedEvent.type === EEventType.Fight
+          ) {
+            this.simulatedEvent.perishedUnitIds.push(unit.id);
           }
+
+          this.handleDeath(unit);
         }
-      );
+      }
     }
   }
 
@@ -413,6 +466,7 @@ export default class Battle extends Phaser.Scene {
   }
 
   simulate() {
+    this.timeline = [];
     const maxSteps = 1000;
     let index = 0;
 
@@ -440,6 +494,7 @@ export default class Battle extends Phaser.Scene {
 
       if (!this.eventQueue.length) {
         this.createFrontFightEvent();
+
         // trigger pre-combat events for all units
 
         if (!this.eventQueue.length) {
@@ -449,6 +504,8 @@ export default class Battle extends Phaser.Scene {
 
       index += 1;
     }
+
+    console.log(this.timeline);
 
     this.clearFields();
 
