@@ -1,17 +1,26 @@
 import Phaser from "phaser";
 import { find } from "lodash";
-import { IRangedEvent } from "../scenes/battle";
+import { IRangedEvent, TTimelineEvent } from "../scenes/battle";
 import { moveTowards } from "../helpers/animation";
-import { Unit } from "../objects/good/units/unit";
+import { Battlefield } from "../objects/fields/battlefield";
+
+export interface IAnimation {
+  gameObject: Phaser.GameObjects.Arc;
+  targetId: string;
+}
 
 export const animateRanged = (
-  e: IRangedEvent,
-  units: Unit[],
-  animationObjects: Phaser.GameObjects.Arc[],
+  e: TTimelineEvent<IRangedEvent>,
+  myField: Battlefield,
+  opponentsField: Battlefield,
+  animationObjects: IAnimation[],
   add: Phaser.GameObjects.GameObjectFactory,
   step: number
-): Phaser.GameObjects.Arc[] => {
+): IAnimation[] => {
+  const baseUnits = [...e.myUnits, ...e.opponentsUnits];
+
   const pct = step / e.duration;
+  const units = [...myField.contents, ...opponentsField.contents];
 
   const sourceId = e.sourceId;
   const sourceUnit = find(units, (content) => sourceId === content.id);
@@ -21,29 +30,61 @@ export const animateRanged = (
       .map((id) => find(units, (content) => id === content.id))
       .flatMap((v) => (v ? [v] : []));
 
-    if (!animationObjects.length) {
-      affectedUnits.forEach((unit) => {
-        const buffObject = add.circle(unit.x, unit.y, 10, 0xd9d9d9);
-        animationObjects.push(buffObject);
-      });
-    }
+    const totalUnits = affectedUnits.length;
+    const spacing = 0.6;
+    const padding = 0.2;
 
-    for (let i = 0; i < affectedUnits.length; i++) {
+    for (let i = 0; i < totalUnits; i++) {
       const unit = affectedUnits[i];
-      const buffObject = animationObjects[i];
+      const baseUnit = baseUnits.find((baseUnit) => baseUnit.id === unit.id);
+      const start = spacing * (i / totalUnits);
+      const finish = 1 - padding - spacing + start;
 
-      const xPos = moveTowards(0, 1, sourceUnit.x, unit.x, pct);
-      const yPos = sourceUnit.y - 60 * Math.sin(Math.PI * pct) - 40;
+      const xPos = moveTowards(start, finish, sourceUnit.x, unit.x, pct);
+      const yPos =
+        sourceUnit.y -
+        120 * Math.sin((Math.PI * (pct - start)) / (1 - padding - spacing)) -
+        40;
 
-      if (xPos && yPos) {
-        buffObject.x = xPos;
-        buffObject.y = yPos;
+      let animObject = animationObjects.find(
+        (animObject) => animObject.targetId === unit.id
+      );
+
+      if (xPos) {
+        if (!animObject) {
+          animObject = {
+            gameObject: add.circle(unit.x, unit.y, 10, 0xd9d9d9),
+            targetId: unit.id,
+          };
+
+          animationObjects.push(animObject);
+        }
+
+        animObject.gameObject.x = xPos;
+        animObject.gameObject.y = yPos;
       }
-    }
 
-    if (pct === 1) {
-      animationObjects.forEach((obj) => obj.destroy());
-      return [];
+      if (pct >= finish) {
+        unit.health = (baseUnit?.health || 0) - e.attackAmount;
+
+        // knock-back
+        if (unit.health <= 0) {
+          const dir = myField.contains(unit.id) ? -1 : 1;
+          unit.animX = dir * (pct - finish) * 2500;
+          unit.animY = -(pct - finish) * 400;
+          unit.gameObject.rotation = (pct - finish) * 20;
+        }
+      } else if (pct < finish) {
+        unit.health = baseUnit?.health || 0;
+      }
+
+      if ((!xPos || pct === finish) && animObject) {
+        console.log("destroyed");
+        animObject.gameObject.destroy();
+        animationObjects = animationObjects.filter(
+          (animObject) => animObject.targetId !== unit.id
+        );
+      }
     }
   }
 

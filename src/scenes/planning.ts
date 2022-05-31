@@ -13,6 +13,7 @@ import { GameInfo } from "../objects/gameInfo";
 import { EImageKey, Unit } from "../objects/good/units/unit";
 import { Good } from "../objects/good/good";
 import { ToolTip } from "../objects/toolTip";
+import { IAnimation } from "../animations/ranged";
 
 export enum EMouseEvent {
   PointerDown = "pointerdown",
@@ -40,7 +41,7 @@ export default class Planning extends Phaser.Scene {
   private delayStep: number;
   private durationStep: number;
   private clickedNextButton: boolean;
-  private animationObjects: Phaser.GameObjects.Arc[];
+  private animationObjects: IAnimation[];
 
   // private selectedOffsetX: number;
   // private selectedOffsetY: number;
@@ -65,6 +66,7 @@ export default class Planning extends Phaser.Scene {
   }
 
   preload() {
+    // TODO: improve this
     this.load.image(EImageKey.Gold, "assets/images/gold.png");
     this.load.image(EImageKey.RollButton, "assets/images/button_roll.png");
     this.load.image(EImageKey.SellButton, "assets/images/button_sell.png");
@@ -74,6 +76,8 @@ export default class Planning extends Phaser.Scene {
     this.load.image(EImageKey.Spider, "assets/images/spider.png");
     this.load.image(EImageKey.Ogre, "assets/images/ogre.png");
     this.load.image(EImageKey.Golem, "assets/images/golem.png");
+    this.load.image(EImageKey.Plant, "assets/images/plant.png");
+    this.load.image(EImageKey.Lizard, "assets/images/lizard.png");
     this.load.spritesheet(EImageKey.Level, "assets/sprites/level/texture.png", {
       frameWidth: 170,
       frameHeight: 124,
@@ -129,7 +133,7 @@ export default class Planning extends Phaser.Scene {
 
   setupShop() {
     saveData.turn += 1;
-    saveData.gold = 10;
+    saveData.gold = 7;
     this.clearFields();
 
     this.field.contents = saveData.units.map((unit) =>

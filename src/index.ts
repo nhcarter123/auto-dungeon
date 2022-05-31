@@ -3,7 +3,6 @@ import config from "./config";
 import PlanningScene from "./scenes/planning";
 import BattleScene from "./scenes/battle";
 import { TReducedUnitData } from "./helpers/unit";
-import { EUnitType } from "./objects/good/units/unit";
 
 interface SaveData {
   units: TReducedUnitData[];
@@ -21,9 +20,9 @@ const loadFont = (name: string) => {
 
 export const saveData: SaveData = {
   units: [
-    { type: EUnitType.Skeleton },
-    { type: EUnitType.Skeleton },
-    { type: EUnitType.Skeleton },
+    // { type: EUnitType.Skeleton },
+    // { type: EUnitType.Skeleton },
+    // { type: EUnitType.Skeleton },
   ],
   fastForward: 1,
   gold: 10,

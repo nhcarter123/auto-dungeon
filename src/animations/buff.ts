@@ -3,14 +3,15 @@ import { find } from "lodash";
 import { IBuffEvent } from "../scenes/battle";
 import { moveTowards } from "../helpers/animation";
 import { Unit } from "../objects/good/units/unit";
+import { IAnimation } from "./ranged";
 
 export const animateBuff = (
   e: IBuffEvent,
   units: Unit[],
-  animationObjects: Phaser.GameObjects.Arc[],
+  animationObjects: IAnimation[],
   add: Phaser.GameObjects.GameObjectFactory,
   step: number
-): Phaser.GameObjects.Arc[] => {
+): IAnimation[] => {
   const pct = step / e.duration;
 
   const sourceId = e.sourceId;
@@ -23,21 +24,24 @@ export const animateBuff = (
 
     if (!animationObjects.length) {
       affectedUnits.forEach((unit) => {
-        const buffObject = add.circle(unit.x, unit.y, 10, 0xd9d9d9);
-        animationObjects.push(buffObject);
+        const animObject = {
+          targetId: unit.id,
+          gameObject: add.circle(unit.x, unit.y, 10, 0xd9d9d9),
+        };
+        animationObjects.push(animObject);
       });
     }
 
     for (let i = 0; i < affectedUnits.length; i++) {
       const unit = affectedUnits[i];
-      const buffObject = animationObjects[i];
+      const animObject = animationObjects[i];
 
       const xPos = moveTowards(0, 1, sourceUnit.x, unit.x, pct);
       const yPos = sourceUnit.y - 60 * Math.sin(Math.PI * pct) - 40;
 
       if (xPos && yPos) {
-        buffObject.x = xPos;
-        buffObject.y = yPos;
+        animObject.gameObject.x = xPos;
+        animObject.gameObject.y = yPos;
       }
     }
 
@@ -56,7 +60,7 @@ export const animateBuff = (
         }
       }
 
-      animationObjects.forEach((obj) => obj.destroy());
+      animationObjects.forEach((obj) => obj.gameObject.destroy());
       return [];
     }
   }

@@ -4,8 +4,6 @@ import { EImageKey } from "./good/units/unit";
 import { lerp } from "../helpers/math";
 
 export class GameInfo {
-  public x: number;
-  public y: number;
   public goldIconObject: Phaser.GameObjects.Image;
   public goldObject: Phaser.GameObjects.Text;
   public turnIconObject: Phaser.GameObjects.Image;
@@ -14,8 +12,6 @@ export class GameInfo {
   public previousGold: number;
 
   constructor(add: Phaser.GameObjects.GameObjectFactory, x: number, y: number) {
-    this.x = x;
-    this.y = y;
     this.scale = 0.75;
     this.previousGold = saveData.gold;
 

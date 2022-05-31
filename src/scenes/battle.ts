@@ -13,12 +13,13 @@ import {
 } from "../helpers/unit";
 import { calculateDuration } from "../helpers/math";
 import { EImageKey, Unit } from "../objects/good/units/unit";
-import { animateRanged } from "../animations/ranged";
+import { animateRanged, IAnimation } from "../animations/ranged";
+import { TimelineSlider } from "../objects/timelineSlider";
 
-const fastForward = 1;
-const EVENT_DELAY = 30;
+const EVENT_DELAY = 40;
 
 export enum EEventSpeed {
+  VerySlow = 280,
   Slow = 140,
   Medium = 100,
   Fast = 60,
@@ -49,6 +50,7 @@ export interface IBuffEvent extends IEvent {
   attackAmount: number;
   healthAmount: number;
   sourceId: string;
+  untilEndOfBattleOnly: boolean;
 }
 
 export interface IFightEvent extends IEvent {
@@ -73,7 +75,7 @@ export type TBattleEvent =
   | IResultEvent;
 export type TShopEvent = IBuffEvent;
 
-type TTimelineEvent = TBattleEvent & {
+export type TTimelineEvent<Type> = Type & {
   myUnits: TReducedUnitData[];
   opponentsUnits: TReducedUnitData[];
 };
@@ -83,13 +85,17 @@ export default class Battle extends Phaser.Scene {
   private opponentsField: Battlefield;
   private eventQueue: TBattleEvent[];
   private simulatedEvent: TBattleEvent | undefined;
-  private timeline: TTimelineEvent[];
-  private timelineEvent: TTimelineEvent | undefined;
+  private timeline: TTimelineEvent<TBattleEvent>[];
+  private timelineEvent: TTimelineEvent<TBattleEvent> | undefined;
   private currentEventIndex: number;
+  private targetEventIndex: number;
   private delayStep: number;
   private durationStep: number;
   private paused: boolean;
-  private animationObjects: Phaser.GameObjects.Arc[];
+  private animationObjects: IAnimation[];
+  private timelineSlider: TimelineSlider | undefined;
+  private playSpeed: number;
+  private happensOnce: boolean;
 
   constructor() {
     super(EScene.Battle);
@@ -99,8 +105,11 @@ export default class Battle extends Phaser.Scene {
     this.delayStep = 0;
     this.durationStep = 0;
     this.currentEventIndex = -1;
+    this.targetEventIndex = -1;
     this.animationObjects = [];
     this.paused = false;
+    this.happensOnce = false;
+    this.playSpeed = 1;
 
     const halfScreenWidth = screenWidth / 2;
     const halfScreenHeight = screenHeight / 2;
@@ -120,6 +129,7 @@ export default class Battle extends Phaser.Scene {
   }
 
   preload() {
+    // TODO: improve this
     this.load.image(EImageKey.RollButton, "assets/images/button_roll.png");
     this.load.image(EImageKey.SellButton, "assets/images/button_sell.png");
     this.load.image(EImageKey.NextButton, "assets/images/button_next.png");
@@ -128,6 +138,8 @@ export default class Battle extends Phaser.Scene {
     this.load.image(EImageKey.Spider, "assets/images/spider.png");
     this.load.image(EImageKey.Ogre, "assets/images/ogre.png");
     this.load.image(EImageKey.Golem, "assets/images/golem.png");
+    this.load.image(EImageKey.Plant, "assets/images/plant.png");
+    this.load.image(EImageKey.Lizard, "assets/images/lizard.png");
     this.load.spritesheet(EImageKey.Level, "assets/sprites/level/texture.png", {
       frameWidth: 170,
       frameHeight: 124,
@@ -137,6 +149,14 @@ export default class Battle extends Phaser.Scene {
   create() {
     this.myField.create(this.add);
     this.opponentsField.create(this.add);
+
+    this.timelineSlider = new TimelineSlider(
+      this.add,
+      screenWidth / 2,
+      screenHeight - 100,
+      900,
+      90
+    );
 
     const background = this.add.image(
       screenWidth / 2,
@@ -149,17 +169,17 @@ export default class Battle extends Phaser.Scene {
       switch (event.keyCode) {
         case Phaser.Input.Keyboard.KeyCodes.LEFT:
           if (this.currentEventIndex > 0) {
-            this.currentEventIndex = this.currentEventIndex - 2;
-            this.timelineEvent = undefined;
-            this.delayStep = Infinity;
-            this.durationStep = 0;
+            this.playSpeed = -1.5;
+            this.paused = false;
+            if (this.delayStep <= 0) {
+              this.happensOnce = true;
+            }
           }
           break;
         case Phaser.Input.Keyboard.KeyCodes.RIGHT:
           if (this.currentEventIndex < this.timeline.length - 1) {
-            this.timelineEvent = undefined;
-            this.delayStep = Infinity;
-            this.durationStep = 0;
+            this.playSpeed = 1.5;
+            this.paused = false;
           }
           break;
         case Phaser.Input.Keyboard.KeyCodes.SPACE:
@@ -181,13 +201,18 @@ export default class Battle extends Phaser.Scene {
     this.myField.scaleContent();
     this.opponentsField.scaleContent();
 
-    this.myField.positionContent(0.07 * fastForward);
-    this.opponentsField.positionContent(0.07 * fastForward);
+    this.myField.positionContent(0.07 * saveData.fastForward);
+    this.opponentsField.positionContent(0.07 * saveData.fastForward);
 
     if (!this.timelineEvent && this.currentEventIndex < this.timeline.length) {
       this.currentEventIndex += 1;
       this.timelineEvent = this.getCurrentEvent();
       if (this.timelineEvent) {
+        if (this.delayStep < 0) {
+          this.delayStep = EVENT_DELAY + 1;
+          this.durationStep = this.timelineEvent.duration - 1;
+        }
+
         this.syncField(this.myField, this.timelineEvent.myUnits);
         this.syncField(this.opponentsField, this.timelineEvent.opponentsUnits);
       } else {
@@ -196,27 +221,79 @@ export default class Battle extends Phaser.Scene {
       }
     }
 
-    if (this.paused || !this.timelineEvent) {
+    const stepPercentage =
+      (Math.min(this.delayStep, EVENT_DELAY) + this.durationStep) /
+      ((this.timelineEvent?.duration || Infinity) + EVENT_DELAY);
+
+    if (this.targetEventIndex === this.currentEventIndex) {
+      this.targetEventIndex = -1;
+    }
+
+    const pct =
+      (this.currentEventIndex + stepPercentage) / this.timeline.length;
+    // console.log(pct);
+
+    const percent = this.timelineSlider?.update(pct, this.input);
+    if (percent) {
+      const rawIndex = this.timeline.length * percent;
+      const oldCurrentEventIndex = this.currentEventIndex;
+      this.currentEventIndex = Math.floor(rawIndex);
+      this.timelineEvent = this.getCurrentEvent();
+
+      this.paused = true;
+      if (this.timelineEvent) {
+        if (this.currentEventIndex !== oldCurrentEventIndex) {
+          this.syncField(this.myField, this.timelineEvent.myUnits);
+          this.syncField(
+            this.opponentsField,
+            this.timelineEvent.opponentsUnits
+          );
+        }
+
+        const eventDuration = EVENT_DELAY + this.timelineEvent.duration;
+        const step = (rawIndex - Math.floor(rawIndex)) * eventDuration;
+        this.delayStep = step;
+        this.durationStep = step > EVENT_DELAY ? step - EVENT_DELAY : 0;
+      }
+    }
+
+    if (!this.timelineEvent) {
       return;
     }
 
     if (this.delayStep > EVENT_DELAY) {
-      // if (this.durationStep === 0) {
-      //   this.syncField(this.myField, this.timelineEvent.myUnits);
-      //   this.syncField(this.opponentsField, this.timelineEvent.opponentsUnits);
-      // }
-
       if (this.durationStep > this.timelineEvent.duration) {
         this.delayStep = 0;
         this.durationStep = 0;
+        if (this.playSpeed > 1) {
+          this.paused = true;
+          this.playSpeed = 1;
+        }
         this.timelineEvent = undefined;
       } else {
         this.animateEvent();
-        this.durationStep += 1;
+        this.durationStep += this.paused ? 0 : this.playSpeed;
+
+        if (this.durationStep < 0) {
+          this.delayStep = EVENT_DELAY;
+        }
+      }
+    } else {
+      this.delayStep += this.paused ? 0 : this.playSpeed;
+
+      if (this.delayStep < 0) {
+        if (this.happensOnce) {
+          this.happensOnce = false;
+          this.currentEventIndex -= 2;
+          this.timelineEvent = undefined;
+        } else {
+          this.delayStep = 0;
+          this.durationStep = 0;
+          this.paused = true;
+          this.playSpeed = 1;
+        }
       }
     }
-
-    this.delayStep += 1;
   }
 
   setupBattle() {
@@ -227,15 +304,16 @@ export default class Battle extends Phaser.Scene {
       .reverse()
       .map((unit) => createUnitFromType(this.add, unit.type, unit));
 
-    this.opponentsField.contents = [
-      createUnitFromType(this.add, getRandomUnitType(), { facingDir: -1 }),
-      createUnitFromType(this.add, getRandomUnitType(), { facingDir: -1 }),
-      createUnitFromType(this.add, getRandomUnitType(), { facingDir: -1 }),
-      createUnitFromType(this.add, getRandomUnitType(), { facingDir: -1 }),
-      createUnitFromType(this.add, getRandomUnitType(), { facingDir: -1 }),
-      createUnitFromType(this.add, getRandomUnitType(), { facingDir: -1 }),
-      createUnitFromType(this.add, getRandomUnitType(), { facingDir: -1 }),
-    ];
+    const overrides = {
+      facingDir: -1,
+      attack: saveData.turn,
+      health: saveData.turn,
+    };
+    for (let i = 0; i < Math.min(2 + saveData.turn, 5); i++) {
+      this.opponentsField.contents.push(
+        createUnitFromType(this.add, getRandomUnitType(), overrides)
+      );
+    }
 
     this.myField.positionContent(1);
     this.opponentsField.positionContent(1);
@@ -243,7 +321,7 @@ export default class Battle extends Phaser.Scene {
     this.simulate();
   }
 
-  getCurrentEvent(): TTimelineEvent | undefined {
+  getCurrentEvent(): TTimelineEvent<TBattleEvent> | undefined {
     return this.timeline[this.currentEventIndex];
   }
 
@@ -330,22 +408,46 @@ export default class Battle extends Phaser.Scene {
 
           leftUnit.health -= rightUnit.attack;
           rightUnit.health -= leftUnit.attack;
+
+          if (rightUnit.health <= 0) {
+            const event = leftUnit.createKillEvent();
+            if (event) {
+              this.eventQueue.push(event);
+            }
+          }
+          if (leftUnit.health <= 0) {
+            const event = rightUnit.createKillEvent();
+            if (event) {
+              this.eventQueue.push(event);
+            }
+          }
           break;
         case EEventType.Buff: {
           const sourceId = this.simulatedEvent.sourceId;
+          const attackAmount = this.simulatedEvent.attackAmount;
+          const healthAmount = this.simulatedEvent.healthAmount;
           const sourceUnit = find(units, (content) => sourceId === content.id);
 
           if (sourceUnit) {
             for (const id of this.simulatedEvent.affectedUnitIds) {
-              const unit = find(
-                units,
-                (content) =>
-                  this.simulatedEvent?.affectedUnitIds[0] === content.id
-              );
+              const unit = find(units, (content) => id === content.id);
 
               if (unit) {
-                unit.attack += this.simulatedEvent.attackAmount;
-                unit.health += this.simulatedEvent.healthAmount;
+                unit.attack += attackAmount;
+                unit.health += healthAmount;
+                if (!this.simulatedEvent.untilEndOfBattleOnly) {
+                  saveData.units = saveData.units.map((unit) => {
+                    if (unit.id === id) {
+                      return {
+                        ...unit,
+                        attack: (unit.attack || 0) + attackAmount,
+                        health: (unit.health || 0) + healthAmount,
+                      };
+                    } else {
+                      return unit;
+                    }
+                  });
+                }
               }
             }
 
@@ -364,15 +466,18 @@ export default class Battle extends Phaser.Scene {
 
           if (sourceUnit) {
             for (const id of this.simulatedEvent.affectedUnitIds) {
-              const unit = find(
-                units,
-                (content) =>
-                  this.simulatedEvent?.affectedUnitIds[0] === content.id
-              );
+              const unit = find(units, (content) => id === content.id);
 
               if (unit) {
                 unit.health -= this.simulatedEvent.attackAmount;
               }
+            }
+
+            // Bit of an ugly edge case for
+            if (!sourceUnit.visible) {
+              this.myField.removeContent(sourceUnit.id);
+              this.opponentsField.removeContent(sourceUnit.id);
+              sourceUnit.delete();
             }
           }
           break;
@@ -413,9 +518,10 @@ export default class Battle extends Phaser.Scene {
           );
           break;
         case EEventType.Ranged:
-          animateRanged(
+          this.animationObjects = animateRanged(
             this.timelineEvent,
-            [...this.myField.contents, ...this.opponentsField.contents],
+            this.myField,
+            this.opponentsField,
             this.animationObjects,
             this.add,
             this.durationStep
@@ -426,7 +532,10 @@ export default class Battle extends Phaser.Scene {
   }
 
   clearAnimationObjects() {
-    this.animationObjects.forEach((obj) => obj.destroy());
+    this.animationObjects.forEach((obj) => {
+      console.log("Animation object was not destroyed in animation");
+      obj.gameObject.destroy();
+    });
     this.animationObjects = [];
   }
 
@@ -460,9 +569,21 @@ export default class Battle extends Phaser.Scene {
         );
 
         if (unitInField) {
-          unit.attack !== undefined && (unitInField.attack = unit.attack);
-          unit.health !== undefined && (unitInField.health = unit.health);
-          unit.visible !== undefined && (unitInField.visible = unit.visible);
+          if (unit.attack !== undefined && unit.attack !== unitInField.attack) {
+            console.log(`Animation did not match field during attack sync`);
+            unitInField.attack = unit.attack;
+          }
+          if (unit.health !== undefined && unit.health !== unitInField.health) {
+            console.log(`Animation did not match field during health sync`);
+            unitInField.health = unit.health;
+          }
+          if (
+            unit.visible !== undefined &&
+            unit.visible !== unitInField.visible
+          ) {
+            console.log(`Animation did not match field during visible sync`);
+            unitInField.visible = unit.visible;
+          }
           unitInField.gameObject.rotation = 0;
           unitInField.animX = 0;
           unitInField.animY = 0;
@@ -538,7 +659,7 @@ export default class Battle extends Phaser.Scene {
       index += 1;
     }
 
-    console.log(this.timeline);
+    // console.log(this.timeline);
 
     this.clearFields();
 

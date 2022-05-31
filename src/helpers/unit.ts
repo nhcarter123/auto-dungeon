@@ -5,6 +5,8 @@ import { Ogre } from "../objects/good/units/ogre";
 import { Skeleton } from "../objects/good/units/skeleton";
 import { Golem } from "../objects/good/units/golem";
 import { Spider } from "../objects/good/units/spider";
+import { Plant } from "../objects/good/units/plant";
+import { Lizard } from "../objects/good/units/lizard";
 
 export type TReducedUnitData = TUnitOverrides & Pick<Unit, "type">;
 
@@ -36,6 +38,10 @@ export const createUnitFromType = (
       return new Golem(add, overrides);
     case EUnitType.Spider:
       return new Spider(add, overrides);
+    case EUnitType.Plant:
+      return new Plant(add, overrides);
+    case EUnitType.Lizard:
+      return new Lizard(add, overrides);
   }
 };
 

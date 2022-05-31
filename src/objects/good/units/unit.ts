@@ -11,7 +11,9 @@ export enum EUnitType {
   Skeleton = "Skeleton",
   Ogre = "Ogre",
   Golem = "Golem",
+  Plant = "Plant",
   Spider = "Spider",
+  Lizard = "Lizard",
 }
 
 export interface IImageData {
@@ -28,6 +30,8 @@ export enum EImageKey {
   Swamp = "Swamp",
   Skeleton = "Skeleton",
   Spider = "Spider",
+  Lizard = "Lizard",
+  Plant = "Plant",
   Ogre = "Ogre",
   Golem = "Golem",
   Level = "Level",
@@ -185,6 +189,10 @@ export class Unit extends Good {
       this.xp < MAX_XP &&
       targetUnit.xp < MAX_XP
     );
+  }
+
+  createKillEvent(): TBattleEvent | undefined {
+    return;
   }
 
   createDeathEvent(

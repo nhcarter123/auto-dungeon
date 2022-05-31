@@ -6,11 +6,13 @@ import { saveData } from "../../index";
 
 export class Shop extends Field<Good> {
   public cost: number;
+  public size: number;
   private add: Phaser.GameObjects.GameObjectFactory | undefined;
 
   constructor(x: number, y: number, width: number) {
     super(x, y, width);
     this.cost = 1;
+    this.size = 3;
   }
 
   create(add: Phaser.GameObjects.GameObjectFactory) {
@@ -23,13 +25,11 @@ export class Shop extends Field<Good> {
     if (this.add) {
       this.contents.forEach((content) => content.delete());
 
-      this.contents = [
-        createUnitFromType(this.add, getRandomUnitType()),
-        createUnitFromType(this.add, getRandomUnitType()),
-        createUnitFromType(this.add, getRandomUnitType()),
-        createUnitFromType(this.add, getRandomUnitType()),
-        createUnitFromType(this.add, getRandomUnitType()),
-      ];
+      this.contents = [];
+
+      for (let i = 0; i < this.size; i++) {
+        this.contents.push(createUnitFromType(this.add, getRandomUnitType()));
+      }
 
       this.positionContent(1, undefined);
     }

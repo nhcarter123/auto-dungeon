@@ -32,7 +32,7 @@ export class Skeleton extends Unit {
   }
 
   getAttackBuff(): number {
-    return this.getLevel() * 2;
+    return 4 * (this.getLevel() - 1) + 2;
   }
 
   handleDeathEvent(field: Battlefield): TBattleEvent | undefined {
@@ -49,6 +49,7 @@ export class Skeleton extends Unit {
         attackAmount: this.getAttackBuff(),
         healthAmount: 0,
         perishedUnitIds: [],
+        untilEndOfBattleOnly: true,
       };
     }
   }
