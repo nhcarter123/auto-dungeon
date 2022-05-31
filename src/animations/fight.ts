@@ -1,11 +1,11 @@
 import { find } from "lodash";
-import { IFightEvent } from "../scenes/battle";
+import { IFightEvent, TTimelineEvent } from "../scenes/battle";
 import { Field } from "../objects/fields/field";
 import { moveTowards, rotateTowardAngle } from "../helpers/animation";
 import { Unit } from "../objects/good/units/unit";
 
 export const animateFight = (
-  e: IFightEvent,
+  e: TTimelineEvent<IFightEvent>,
   myField: Field<Unit>,
   opponentsField: Field<Unit>,
   step: number
@@ -27,9 +27,20 @@ export const animateFight = (
     return;
   }
 
-  if (step === hitTime) {
-    leftUnit.health -= rightUnit.attack;
-    rightUnit.health -= leftUnit.attack;
+  const baseUnits = [...e.myUnits, ...e.opponentsUnits];
+  const baseLeftUnit = baseUnits.find(
+    (baseUnit) => baseUnit.id === leftUnit.id
+  );
+  const baseRightUnit = baseUnits.find(
+    (baseUnit) => baseUnit.id === rightUnit.id
+  );
+
+  if (step >= hitTime) {
+    leftUnit.health = (baseLeftUnit?.health || 0) - rightUnit.attack;
+    rightUnit.health = (baseRightUnit?.health || 0) - leftUnit.attack;
+  } else {
+    leftUnit.health = baseLeftUnit?.health || 0;
+    rightUnit.health = baseRightUnit?.health || 0;
   }
 
   const fAngle1 = -0.4;

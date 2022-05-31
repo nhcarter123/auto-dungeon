@@ -59,6 +59,7 @@ export class Unit extends Good {
   public xp: number;
   public visible: boolean;
   public beforeAttackOnCooldown: boolean;
+  public didKillEnemy: boolean;
   public type: EUnitType;
 
   constructor(
@@ -78,6 +79,7 @@ export class Unit extends Good {
     this.visible = overrides.visible === undefined ? true : overrides.visible;
     this.type = type;
     this.beforeAttackOnCooldown = false;
+    this.didKillEnemy = false;
 
     const fontStyle = {
       fontSize: "20px",

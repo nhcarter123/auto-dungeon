@@ -177,7 +177,7 @@ export default class Battle extends Phaser.Scene {
           }
           break;
         case Phaser.Input.Keyboard.KeyCodes.RIGHT:
-          if (this.currentEventIndex < this.timeline.length - 1) {
+          if (this.currentEventIndex < this.timeline.length) {
             this.playSpeed = 1.5;
             this.paused = false;
           }
@@ -410,16 +410,10 @@ export default class Battle extends Phaser.Scene {
           rightUnit.health -= leftUnit.attack;
 
           if (rightUnit.health <= 0) {
-            const event = leftUnit.createKillEvent();
-            if (event) {
-              this.eventQueue.push(event);
-            }
+            leftUnit.didKillEnemy = true;
           }
           if (leftUnit.health <= 0) {
-            const event = rightUnit.createKillEvent();
-            if (event) {
-              this.eventQueue.push(event);
-            }
+            rightUnit.didKillEnemy = true;
           }
           break;
         case EEventType.Buff: {
@@ -492,6 +486,20 @@ export default class Battle extends Phaser.Scene {
         if (unit.health <= 0) {
           this.simulatedEvent.perishedUnitIds.push(unit.id);
           this.handleDeath(unit);
+        }
+      }
+
+      // handle kill events
+      for (const unit of [
+        ...this.myField.contents,
+        ...this.opponentsField.contents,
+      ]) {
+        if (unit.didKillEnemy) {
+          unit.didKillEnemy = false;
+          const event = unit.createKillEvent();
+          if (event) {
+            this.eventQueue.push(event);
+          }
         }
       }
     }
