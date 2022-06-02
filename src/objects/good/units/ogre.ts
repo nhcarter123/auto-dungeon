@@ -1,8 +1,9 @@
 import Phaser from "phaser";
 import { EImageKey, EUnitType, IImageData, TUnitOverrides, Unit } from "./unit";
-import { EEventSpeed, EEventType, IBuffEvent } from "../../../scenes/battle";
+import { EEventSpeed } from "../../../scenes/battle";
 import { PlanningField } from "../../fields/planningField";
 import { calculateDuration } from "../../../helpers/math";
+import { EEventType, IBuffEvent } from "../../../events/event";
 
 export class Ogre extends Unit {
   constructor(
@@ -11,7 +12,6 @@ export class Ogre extends Unit {
   ) {
     const imageData: IImageData = {
       key: EImageKey.Ogre,
-      path: "assets/images/ogre.png",
       scale: 0.35,
       startingDir: -1,
     };
@@ -32,7 +32,7 @@ export class Ogre extends Unit {
   }
 
   getHealthBuff(): number {
-    return this.getLevel();
+    return 2 * (this.getLevel() - 1) + 1;
   }
 
   createEndTurnEvent(field: PlanningField): IBuffEvent | undefined {

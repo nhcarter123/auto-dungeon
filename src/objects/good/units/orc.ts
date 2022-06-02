@@ -2,48 +2,51 @@ import Phaser from "phaser";
 import { EImageKey, EUnitType, IImageData, TUnitOverrides, Unit } from "./unit";
 import { EEventSpeed } from "../../../scenes/battle";
 import { calculateDuration } from "../../../helpers/math";
-import { EEventType, TBattleEvent } from "../../../events/event";
+import { EEventType, EResource, TBattleEvent } from "../../../events/event";
+import { saveData } from "../../../index";
 
-export class Plant extends Unit {
+export class Orc extends Unit {
   constructor(
     add: Phaser.GameObjects.GameObjectFactory,
     overrides?: TUnitOverrides
   ) {
     const imageData: IImageData = {
-      key: EImageKey.Plant,
-      scale: 0.4,
-      startingDir: 1,
+      key: EImageKey.Orc,
+      scale: 0.25,
+      startingDir: -1,
     };
 
     const defaults: TUnitOverrides = {
-      attack: 1,
+      attack: 3,
       health: 2,
     };
 
-    super(add, EUnitType.Plant, imageData, {
+    super(add, EUnitType.Orc, imageData, {
       ...defaults,
       ...(overrides || {}),
     });
   }
 
   getDescription(): string {
-    return `Kill: Gain +${this.getBuffAmount()}/+0`;
+    return `Kill: Gain ${this.getStealAmount()} gold`;
   }
 
-  getBuffAmount(): number {
+  getStealAmount(): number {
     return 2 * (this.getLevel() - 1) + 1;
   }
 
   createKillEvent(): TBattleEvent | undefined {
+    const amount = this.getStealAmount();
+
     return {
-      type: EEventType.Buff,
-      attackAmount: this.getBuffAmount(),
-      healthAmount: 0,
+      type: EEventType.Resource,
+      startAmount: saveData.gold,
+      amount,
       sourceId: this.id,
-      duration: calculateDuration(EEventSpeed.Fast),
-      affectedUnitIds: [this.id],
+      duration: calculateDuration(EEventSpeed.Medium, (amount + 4) / 5),
+      resource: EResource.Gold,
+      affectedUnitIds: [],
       perishedUnitIds: [],
-      untilEndOfBattleOnly: false,
     };
   }
 }

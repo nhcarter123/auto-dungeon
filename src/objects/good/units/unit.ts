@@ -1,9 +1,9 @@
 import Phaser from "phaser";
-import { TBattleEvent, TShopEvent } from "../../../scenes/battle";
 import { Battlefield } from "../../fields/battlefield";
 import { PlanningField } from "../../fields/planningField";
 import { lerp } from "../../../helpers/math";
 import { Good, TGoodOverrides } from "../good";
+import { TBattleEvent, TShopEvent } from "../../../events/event";
 
 export const MAX_XP = 5;
 
@@ -14,28 +14,32 @@ export enum EUnitType {
   Plant = "Plant",
   Spider = "Spider",
   Lizard = "Lizard",
+  Orc = "Orc",
 }
 
 export interface IImageData {
   key: EImageKey;
-  path: string;
   scale: number;
   startingDir: number;
 }
 
+export enum ESpriteKey {
+  Level = "Level",
+}
+
 export enum EImageKey {
-  RollButton = "RollButton",
-  SellButton = "SellButton",
-  NextButton = "NextButton",
-  Swamp = "Swamp",
+  ButtonRoll = "ButtonRoll",
+  ButtonSell = "ButtonSell",
+  ButtonNext = "ButtonNext",
+  BackgroundSwamp = "BackgroundSwamp",
   Skeleton = "Skeleton",
   Spider = "Spider",
   Lizard = "Lizard",
   Plant = "Plant",
   Ogre = "Ogre",
   Golem = "Golem",
-  Level = "Level",
   Gold = "Gold",
+  Orc = "Orc",
 }
 
 export type TUnitOverrides = TGoodOverrides &
@@ -117,7 +121,7 @@ export class Unit extends Good {
       0x242424,
       1
     );
-    this.levelObject = add.sprite(this.x, this.y, EImageKey.Level);
+    this.levelObject = add.sprite(this.x, this.y, ESpriteKey.Level);
 
     this.draw();
   }

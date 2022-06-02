@@ -4,16 +4,17 @@ import { Button } from "../objects/button";
 import moment from "moment";
 import { EScene, screenHeight, screenWidth } from "../config";
 import { PlanningField, ReorderStatus } from "../objects/fields/planningField";
-import { EEventType, TShopEvent } from "./battle";
+import { IMAGE_FOLDER } from "./battle";
 import { animateBuff } from "../animations/buff";
 import { saveData } from "../index";
 import { createUnitFromType, reduceUnit } from "../helpers/unit";
 import { lerp } from "../helpers/math";
 import { GameInfo } from "../objects/gameInfo";
-import { EImageKey, Unit } from "../objects/good/units/unit";
+import { EImageKey, ESpriteKey, Unit } from "../objects/good/units/unit";
 import { Good } from "../objects/good/good";
 import { ToolTip } from "../objects/toolTip";
-import { IAnimation } from "../animations/ranged";
+import { EEventType, TShopEvent } from "../events/event";
+import { animateResource, IAnimation } from "../animations/resource";
 
 export enum EMouseEvent {
   PointerDown = "pointerdown",
@@ -66,22 +67,18 @@ export default class Planning extends Phaser.Scene {
   }
 
   preload() {
-    // TODO: improve this
-    this.load.image(EImageKey.Gold, "assets/images/gold.png");
-    this.load.image(EImageKey.RollButton, "assets/images/button_roll.png");
-    this.load.image(EImageKey.SellButton, "assets/images/button_sell.png");
-    this.load.image(EImageKey.NextButton, "assets/images/button_next.png");
-    this.load.image(EImageKey.Swamp, "assets/images/background_swamp.png");
-    this.load.image(EImageKey.Skeleton, "assets/images/skeleton.png");
-    this.load.image(EImageKey.Spider, "assets/images/spider.png");
-    this.load.image(EImageKey.Ogre, "assets/images/ogre.png");
-    this.load.image(EImageKey.Golem, "assets/images/golem.png");
-    this.load.image(EImageKey.Plant, "assets/images/plant.png");
-    this.load.image(EImageKey.Lizard, "assets/images/lizard.png");
-    this.load.spritesheet(EImageKey.Level, "assets/sprites/level/texture.png", {
-      frameWidth: 170,
-      frameHeight: 124,
-    });
+    Object.values(EImageKey).forEach((key) =>
+      this.load.image(key, `${IMAGE_FOLDER}/${key}.png`)
+    );
+
+    this.load.spritesheet(
+      ESpriteKey.Level,
+      "assets/sprites/level/texture.png",
+      {
+        frameWidth: 170,
+        frameHeight: 124,
+      }
+    );
   }
 
   create() {
@@ -91,21 +88,21 @@ export default class Planning extends Phaser.Scene {
 
     this.rollButton = new Button(
       this.add,
-      EImageKey.RollButton,
+      EImageKey.ButtonRoll,
       150,
       screenHeight - 100,
       this.shop.roll.bind(this.shop)
     );
     this.sellButton = new Button(
       this.add,
-      EImageKey.SellButton,
+      EImageKey.ButtonSell,
       350,
       screenHeight - 100,
       () => {}
     );
     this.nextButton = new Button(
       this.add,
-      EImageKey.NextButton,
+      EImageKey.ButtonNext,
       screenWidth - 150,
       screenHeight - 100,
       this.endTurn.bind(this)
@@ -120,20 +117,19 @@ export default class Planning extends Phaser.Scene {
     const background = this.add.image(
       screenWidth / 2,
       screenHeight / 2,
-      EImageKey.Swamp
+      EImageKey.BackgroundSwamp
     );
     background.depth = -10;
 
     this.input.on(EMouseEvent.PointerDown, () => (this.mouseClicked = true));
     this.input.on(EMouseEvent.PointerUp, () => (this.mouseReleased = true));
 
-    this.events.on("wake", () => this.setupShop());
-    this.setupShop();
+    this.events.on("wake", () => this.setup());
+    this.setup();
   }
 
-  setupShop() {
+  setup() {
     saveData.turn += 1;
-    saveData.gold = 7;
     this.clearFields();
 
     this.field.contents = saveData.units.map((unit) =>
@@ -320,7 +316,16 @@ export default class Planning extends Phaser.Scene {
     if (this.currentEvent) {
       switch (this.currentEvent.type) {
         case EEventType.Buff:
-          this.animationObjects = animateBuff(
+          animateBuff(
+            this.currentEvent,
+            this.field.contents,
+            this.animationObjects,
+            this.add,
+            this.durationStep
+          );
+          break;
+        case EEventType.Resource:
+          this.animationObjects = animateResource(
             this.currentEvent,
             this.field.contents,
             this.animationObjects,

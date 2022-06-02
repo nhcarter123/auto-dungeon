@@ -8,7 +8,6 @@ export class Golem extends Unit {
   ) {
     const imageData: IImageData = {
       key: EImageKey.Golem,
-      path: "assets/images/golem.png",
       scale: 0.2,
       startingDir: -1,
     };

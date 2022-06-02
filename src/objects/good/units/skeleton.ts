@@ -1,8 +1,9 @@
 import Phaser from "phaser";
 import { EImageKey, EUnitType, IImageData, TUnitOverrides, Unit } from "./unit";
-import { EEventSpeed, EEventType, TBattleEvent } from "../../../scenes/battle";
+import { EEventSpeed } from "../../../scenes/battle";
 import { Battlefield } from "../../fields/battlefield";
 import { calculateDuration } from "../../../helpers/math";
+import { EEventType, TBattleEvent } from "../../../events/event";
 
 export class Skeleton extends Unit {
   constructor(
@@ -11,7 +12,6 @@ export class Skeleton extends Unit {
   ) {
     const imageData: IImageData = {
       key: EImageKey.Skeleton,
-      path: "assets/images/skeleton.png",
       scale: 0.35,
       startingDir: 1,
     };

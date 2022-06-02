@@ -1,8 +1,8 @@
 import { find } from "lodash";
-import { IFightEvent, TTimelineEvent } from "../scenes/battle";
 import { Field } from "../objects/fields/field";
 import { moveTowards, rotateTowardAngle } from "../helpers/animation";
 import { Unit } from "../objects/good/units/unit";
+import { IFightEvent, TTimelineEvent } from "../events/event";
 
 export const animateFight = (
   e: TTimelineEvent<IFightEvent>,

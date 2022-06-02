@@ -1,13 +1,9 @@
 import Phaser from "phaser";
 import { find } from "lodash";
-import { IRangedEvent, TTimelineEvent } from "../scenes/battle";
 import { moveTowards } from "../helpers/animation";
 import { Battlefield } from "../objects/fields/battlefield";
-
-export interface IAnimation {
-  gameObject: Phaser.GameObjects.Arc;
-  targetId: string;
-}
+import { IRangedEvent, TTimelineEvent } from "../events/event";
+import { IAnimation } from "./resource";
 
 export const animateRanged = (
   e: TTimelineEvent<IRangedEvent>,
@@ -47,14 +43,14 @@ export const animateRanged = (
         40;
 
       let animObject = animationObjects.find(
-        (animObject) => animObject.targetId === unit.id
+        (animObject) => animObject.id === unit.id
       );
 
       if (xPos) {
         if (!animObject) {
           animObject = {
             gameObject: add.circle(unit.x, unit.y, 10, 0xd9d9d9),
-            targetId: unit.id,
+            id: unit.id,
           };
 
           animationObjects.push(animObject);
@@ -82,7 +78,7 @@ export const animateRanged = (
         console.log("destroyed");
         animObject.gameObject.destroy();
         animationObjects = animationObjects.filter(
-          (animObject) => animObject.targetId !== unit.id
+          (animObject) => animObject.id !== unit.id
         );
       }
     }

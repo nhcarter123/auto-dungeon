@@ -12,10 +12,18 @@ import {
   TReducedUnitData,
 } from "../helpers/unit";
 import { calculateDuration } from "../helpers/math";
-import { EImageKey, Unit } from "../objects/good/units/unit";
-import { animateRanged, IAnimation } from "../animations/ranged";
+import { EImageKey, ESpriteKey, Unit } from "../objects/good/units/unit";
+import { animateRanged } from "../animations/ranged";
 import { TimelineSlider } from "../objects/timelineSlider";
+import {
+  EEventType,
+  EResource,
+  TBattleEvent,
+  TTimelineEvent,
+} from "../events/event";
+import { animateResource, IAnimation } from "../animations/resource";
 
+export const IMAGE_FOLDER = "assets/images";
 const EVENT_DELAY = 40;
 
 export enum EEventSpeed {
@@ -25,60 +33,11 @@ export enum EEventSpeed {
   Fast = 60,
 }
 
-export enum EEventType {
-  Fight = "Fight",
-  Buff = "Buff",
-  Ranged = "Ranged",
-  Result = "Result",
-}
-
 export enum EResult {
   Win = "Win",
   Loss = "Loss",
   Draw = "Draw",
 }
-
-interface IEvent {
-  type: EEventType;
-  affectedUnitIds: string[];
-  duration: number;
-  perishedUnitIds: string[];
-}
-
-export interface IBuffEvent extends IEvent {
-  type: EEventType.Buff;
-  attackAmount: number;
-  healthAmount: number;
-  sourceId: string;
-  untilEndOfBattleOnly: boolean;
-}
-
-export interface IFightEvent extends IEvent {
-  type: EEventType.Fight;
-}
-
-export interface IRangedEvent extends IEvent {
-  type: EEventType.Ranged;
-  attackAmount: number;
-  sourceId: string;
-}
-
-interface IResultEvent extends IEvent {
-  type: EEventType.Result;
-  result: EResult;
-}
-
-export type TBattleEvent =
-  | IFightEvent
-  | IBuffEvent
-  | IRangedEvent
-  | IResultEvent;
-export type TShopEvent = IBuffEvent;
-
-export type TTimelineEvent<Type> = Type & {
-  myUnits: TReducedUnitData[];
-  opponentsUnits: TReducedUnitData[];
-};
 
 export default class Battle extends Phaser.Scene {
   private myField: Battlefield;
@@ -129,21 +88,18 @@ export default class Battle extends Phaser.Scene {
   }
 
   preload() {
-    // TODO: improve this
-    this.load.image(EImageKey.RollButton, "assets/images/button_roll.png");
-    this.load.image(EImageKey.SellButton, "assets/images/button_sell.png");
-    this.load.image(EImageKey.NextButton, "assets/images/button_next.png");
-    this.load.image(EImageKey.Swamp, "assets/images/background_swamp.png");
-    this.load.image(EImageKey.Skeleton, "assets/images/skeleton.png");
-    this.load.image(EImageKey.Spider, "assets/images/spider.png");
-    this.load.image(EImageKey.Ogre, "assets/images/ogre.png");
-    this.load.image(EImageKey.Golem, "assets/images/golem.png");
-    this.load.image(EImageKey.Plant, "assets/images/plant.png");
-    this.load.image(EImageKey.Lizard, "assets/images/lizard.png");
-    this.load.spritesheet(EImageKey.Level, "assets/sprites/level/texture.png", {
-      frameWidth: 170,
-      frameHeight: 124,
-    });
+    Object.values(EImageKey).forEach((key) =>
+      this.load.image(key, `${IMAGE_FOLDER}/${key}.png`)
+    );
+
+    this.load.spritesheet(
+      ESpriteKey.Level,
+      "assets/sprites/level/texture.png",
+      {
+        frameWidth: 170,
+        frameHeight: 124,
+      }
+    );
   }
 
   create() {
@@ -161,7 +117,7 @@ export default class Battle extends Phaser.Scene {
     const background = this.add.image(
       screenWidth / 2,
       screenHeight / 2,
-      EImageKey.Swamp
+      EImageKey.BackgroundSwamp
     );
     background.depth = -10;
 
@@ -188,8 +144,8 @@ export default class Battle extends Phaser.Scene {
       }
     });
 
-    this.events.on("wake", () => this.setupBattle());
-    this.setupBattle();
+    this.events.on("wake", () => this.setup());
+    this.setup();
   }
 
   update(time: number, delta: number) {
@@ -296,7 +252,7 @@ export default class Battle extends Phaser.Scene {
     }
   }
 
-  setupBattle() {
+  setup() {
     this.currentEventIndex = -1;
     this.clearFields();
 
@@ -306,10 +262,13 @@ export default class Battle extends Phaser.Scene {
 
     const overrides = {
       facingDir: -1,
-      attack: saveData.turn,
-      health: saveData.turn,
+      attack: 1 + Math.round(saveData.turn / 2),
+      health: 1 + Math.round(saveData.turn / 2),
     };
-    for (let i = 0; i < Math.min(2 + saveData.turn, 5); i++) {
+
+    const unitCount = Math.min(Math.round(saveData.turn / 5), 5) + 2;
+
+    for (let i = 0; i < unitCount; i++) {
       this.opponentsField.contents.push(
         createUnitFromType(this.add, getRandomUnitType(), overrides)
       );
@@ -385,13 +344,13 @@ export default class Battle extends Phaser.Scene {
     });
   }
 
-  processEvent() {
+  simulateEvent() {
     if (this.simulatedEvent) {
       // Be very careful with this as it is a copy an does not get updated
       const units = [...this.myField.contents, ...this.opponentsField.contents];
 
       switch (this.simulatedEvent.type) {
-        case EEventType.Fight:
+        case EEventType.Fight: {
           const leftUnit = find(
             units,
             (content) => this.simulatedEvent?.affectedUnitIds[0] === content.id
@@ -416,6 +375,7 @@ export default class Battle extends Phaser.Scene {
             rightUnit.didKillEnemy = true;
           }
           break;
+        }
         case EEventType.Buff: {
           const sourceId = this.simulatedEvent.sourceId;
           const attackAmount = this.simulatedEvent.attackAmount;
@@ -476,6 +436,19 @@ export default class Battle extends Phaser.Scene {
           }
           break;
         }
+        case EEventType.Resource: {
+          const sourceId = this.simulatedEvent.sourceId;
+          const sourceUnit = find(units, (content) => sourceId === content.id);
+
+          if (sourceUnit) {
+            switch (this.simulatedEvent.resource) {
+              case EResource.Gold:
+                saveData.gold += this.simulatedEvent.amount;
+                break;
+            }
+          }
+          break;
+        }
       }
 
       // handle death events
@@ -520,6 +493,15 @@ export default class Battle extends Phaser.Scene {
           animateBuff(
             this.timelineEvent,
             [...this.myField.contents, ...this.opponentsField.contents],
+            this.animationObjects,
+            this.add,
+            this.durationStep
+          );
+          break;
+        case EEventType.Resource:
+          this.animationObjects = animateResource(
+            this.timelineEvent,
+            this.myField.contents,
             this.animationObjects,
             this.add,
             this.durationStep
@@ -643,7 +625,7 @@ export default class Battle extends Phaser.Scene {
         break;
       }
 
-      this.processEvent();
+      this.simulateEvent();
 
       if (!this.eventQueue.length) {
         if (
@@ -686,6 +668,7 @@ export default class Battle extends Phaser.Scene {
   }
 
   goToShop() {
+    saveData.gold += 5;
     this.scene.switch(EScene.Planning);
   }
 }

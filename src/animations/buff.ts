@@ -1,9 +1,9 @@
 import Phaser from "phaser";
 import { find } from "lodash";
-import { IBuffEvent } from "../scenes/battle";
 import { moveTowards } from "../helpers/animation";
 import { Unit } from "../objects/good/units/unit";
-import { IAnimation } from "./ranged";
+import { IBuffEvent } from "../events/event";
+import { IAnimation } from "./resource";
 
 export const animateBuff = (
   e: IBuffEvent,
@@ -25,7 +25,7 @@ export const animateBuff = (
     if (!animationObjects.length) {
       affectedUnits.forEach((unit) => {
         const animObject = {
-          targetId: unit.id,
+          id: unit.id,
           gameObject: add.circle(unit.x, unit.y, 10, 0xd9d9d9),
         };
         animationObjects.push(animObject);

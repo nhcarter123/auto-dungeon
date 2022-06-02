@@ -1,8 +1,9 @@
 import Phaser from "phaser";
 import { EImageKey, EUnitType, IImageData, TUnitOverrides, Unit } from "./unit";
-import { EEventSpeed, EEventType, IRangedEvent } from "../../../scenes/battle";
+import { EEventSpeed } from "../../../scenes/battle";
 import { calculateDuration } from "../../../helpers/math";
 import { Battlefield } from "../../fields/battlefield";
+import { EEventType, IRangedEvent } from "../../../events/event";
 
 export class Spider extends Unit {
   constructor(
@@ -11,7 +12,6 @@ export class Spider extends Unit {
   ) {
     const imageData: IImageData = {
       key: EImageKey.Spider,
-      path: "assets/images/spider.png",
       scale: 0.4,
       startingDir: 1,
     };
