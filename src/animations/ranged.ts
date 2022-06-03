@@ -3,16 +3,17 @@ import { find } from "lodash";
 import { moveTowards } from "../helpers/animation";
 import { Battlefield } from "../objects/fields/battlefield";
 import { IRangedEvent, TTimelineEvent } from "../events/event";
-import { IAnimation } from "./resource";
+import { BaseAnim } from "../objects/animation/baseAnim";
+import { BuffAnim } from "../objects/animation/buffAnim";
 
 export const animateRanged = (
   e: TTimelineEvent<IRangedEvent>,
   myField: Battlefield,
   opponentsField: Battlefield,
-  animationObjects: IAnimation[],
+  animationObjects: BaseAnim[],
   add: Phaser.GameObjects.GameObjectFactory,
   step: number
-): IAnimation[] => {
+): BaseAnim[] => {
   const baseUnits = [...e.myUnits, ...e.opponentsUnits];
 
   const pct = step / e.duration;
@@ -27,19 +28,17 @@ export const animateRanged = (
       .flatMap((v) => (v ? [v] : []));
 
     const totalUnits = affectedUnits.length;
-    const spacing = 0.6;
-    const padding = 0.2;
 
     for (let i = 0; i < totalUnits; i++) {
       const unit = affectedUnits[i];
       const baseUnit = baseUnits.find((baseUnit) => baseUnit.id === unit.id);
-      const start = spacing * (i / totalUnits);
-      const finish = 1 - padding - spacing + start;
+      const start = (i / (totalUnits + 1)) * 0.75;
+      const finish = ((i + 2) / (totalUnits + 1)) * 0.75;
 
       const xPos = moveTowards(start, finish, sourceUnit.x, unit.x, pct);
       const yPos =
         sourceUnit.y -
-        120 * Math.sin((Math.PI * (pct - start)) / (1 - padding - spacing)) -
+        120 * Math.sin((Math.PI * (pct - start)) / (finish - start)) -
         40;
 
       let animObject = animationObjects.find(
@@ -48,16 +47,12 @@ export const animateRanged = (
 
       if (xPos) {
         if (!animObject) {
-          animObject = {
-            gameObject: add.circle(unit.x, unit.y, 10, 0xd9d9d9),
-            id: unit.id,
-          };
-
+          animObject = new BuffAnim(unit.id, unit.x, unit.y, add);
           animationObjects.push(animObject);
         }
 
-        animObject.gameObject.x = xPos;
-        animObject.gameObject.y = yPos;
+        animObject.x = xPos;
+        animObject.y = yPos;
       }
 
       if (pct >= finish) {
@@ -66,7 +61,7 @@ export const animateRanged = (
         // knock-back
         if (unit.health <= 0) {
           const dir = myField.contains(unit.id) ? -1 : 1;
-          unit.animX = dir * (pct - finish) * 2500;
+          unit.animX = dir * (pct - finish) * 2200;
           unit.animY = -(pct - finish) * 400;
           unit.gameObject.rotation = (pct - finish) * 20;
         }
@@ -75,14 +70,15 @@ export const animateRanged = (
       }
 
       if ((!xPos || pct === finish) && animObject) {
-        console.log("destroyed");
-        animObject.gameObject.destroy();
+        animObject.destroy();
         animationObjects = animationObjects.filter(
           (animObject) => animObject.id !== unit.id
         );
       }
     }
   }
+
+  animationObjects.forEach((anim) => anim.update());
 
   return animationObjects;
 };

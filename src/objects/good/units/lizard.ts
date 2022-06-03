@@ -48,10 +48,7 @@ export class Lizard extends Unit {
       type: EEventType.Ranged,
       attackAmount: this.getRangedAttackAmount(),
       sourceId: this.id,
-      duration: calculateDuration(
-        EEventSpeed.Medium,
-        (3 + affectedUnitIds.length) / 3
-      ),
+      duration: calculateDuration(EEventSpeed.Medium, affectedUnitIds.length),
       affectedUnitIds,
       perishedUnitIds: [],
     };

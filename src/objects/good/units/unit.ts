@@ -15,6 +15,7 @@ export enum EUnitType {
   Spider = "Spider",
   Lizard = "Lizard",
   Orc = "Orc",
+  OrcThief = "OrcThief",
 }
 
 export interface IImageData {
@@ -40,6 +41,7 @@ export enum EImageKey {
   Golem = "Golem",
   Gold = "Gold",
   Orc = "Orc",
+  OrcThief = "OrcThief",
 }
 
 export type TUnitOverrides = TGoodOverrides &

@@ -12,7 +12,7 @@ import {
   TReducedUnitData,
 } from "../helpers/unit";
 import { calculateDuration } from "../helpers/math";
-import { EImageKey, ESpriteKey, Unit } from "../objects/good/units/unit";
+import { Unit } from "../objects/good/units/unit";
 import { animateRanged } from "../animations/ranged";
 import { TimelineSlider } from "../objects/timelineSlider";
 import {
@@ -21,9 +21,9 @@ import {
   TBattleEvent,
   TTimelineEvent,
 } from "../events/event";
-import { animateResource, IAnimation } from "../animations/resource";
+import { animateResource } from "../animations/resource";
+import GameScene from "./gameScene";
 
-export const IMAGE_FOLDER = "assets/images";
 const EVENT_DELAY = 40;
 
 export enum EEventSpeed {
@@ -39,19 +39,15 @@ export enum EResult {
   Draw = "Draw",
 }
 
-export default class Battle extends Phaser.Scene {
+export default class Battle extends GameScene {
   private myField: Battlefield;
   private opponentsField: Battlefield;
   private eventQueue: TBattleEvent[];
   private simulatedEvent: TBattleEvent | undefined;
   private timeline: TTimelineEvent<TBattleEvent>[];
   private timelineEvent: TTimelineEvent<TBattleEvent> | undefined;
-  private currentEventIndex: number;
   private targetEventIndex: number;
-  private delayStep: number;
-  private durationStep: number;
   private paused: boolean;
-  private animationObjects: IAnimation[];
   private timelineSlider: TimelineSlider | undefined;
   private playSpeed: number;
   private happensOnce: boolean;
@@ -61,8 +57,6 @@ export default class Battle extends Phaser.Scene {
 
     this.eventQueue = [];
     this.timeline = [];
-    this.delayStep = 0;
-    this.durationStep = 0;
     this.currentEventIndex = -1;
     this.targetEventIndex = -1;
     this.animationObjects = [];
@@ -87,21 +81,6 @@ export default class Battle extends Phaser.Scene {
     );
   }
 
-  preload() {
-    Object.values(EImageKey).forEach((key) =>
-      this.load.image(key, `${IMAGE_FOLDER}/${key}.png`)
-    );
-
-    this.load.spritesheet(
-      ESpriteKey.Level,
-      "assets/sprites/level/texture.png",
-      {
-        frameWidth: 170,
-        frameHeight: 124,
-      }
-    );
-  }
-
   create() {
     this.myField.create(this.add);
     this.opponentsField.create(this.add);
@@ -113,13 +92,6 @@ export default class Battle extends Phaser.Scene {
       900,
       90
     );
-
-    const background = this.add.image(
-      screenWidth / 2,
-      screenHeight / 2,
-      EImageKey.BackgroundSwamp
-    );
-    background.depth = -10;
 
     this.input.keyboard.on("keydown", (event: { keyCode: number }) => {
       switch (event.keyCode) {
@@ -144,8 +116,7 @@ export default class Battle extends Phaser.Scene {
       }
     });
 
-    this.events.on("wake", () => this.setup());
-    this.setup();
+    super.create();
   }
 
   update(time: number, delta: number) {
@@ -196,7 +167,6 @@ export default class Battle extends Phaser.Scene {
       this.currentEventIndex = Math.floor(rawIndex);
       this.timelineEvent = this.getCurrentEvent();
 
-      this.paused = true;
       if (this.timelineEvent) {
         if (this.currentEventIndex !== oldCurrentEventIndex) {
           this.syncField(this.myField, this.timelineEvent.myUnits);
@@ -253,6 +223,8 @@ export default class Battle extends Phaser.Scene {
   }
 
   setup() {
+    super.setup();
+
     this.currentEventIndex = -1;
     this.clearFields();
 
@@ -482,15 +454,17 @@ export default class Battle extends Phaser.Scene {
     if (this.timelineEvent) {
       switch (this.timelineEvent.type) {
         case EEventType.Fight:
-          animateFight(
+          this.animationObjects = animateFight(
             this.timelineEvent,
             this.myField,
             this.opponentsField,
+            this.animationObjects,
+            this.add,
             this.durationStep
           );
           break;
         case EEventType.Buff:
-          animateBuff(
+          this.animationObjects = animateBuff(
             this.timelineEvent,
             [...this.myField.contents, ...this.opponentsField.contents],
             this.animationObjects,
@@ -519,14 +493,6 @@ export default class Battle extends Phaser.Scene {
           break;
       }
     }
-  }
-
-  clearAnimationObjects() {
-    this.animationObjects.forEach((obj) => {
-      console.log("Animation object was not destroyed in animation");
-      obj.gameObject.destroy();
-    });
-    this.animationObjects = [];
   }
 
   handleDeath(unit: Unit) {

@@ -3,15 +3,20 @@ import { Field } from "../objects/fields/field";
 import { moveTowards, rotateTowardAngle } from "../helpers/animation";
 import { Unit } from "../objects/good/units/unit";
 import { IFightEvent, TTimelineEvent } from "../events/event";
+import Phaser from "phaser";
+import { BaseAnim } from "../objects/animation/baseAnim";
+import { DamageNumberAnim } from "../objects/animation/damageNumberAnim";
 
 export const animateFight = (
   e: TTimelineEvent<IFightEvent>,
   myField: Field<Unit>,
   opponentsField: Field<Unit>,
+  animationObjects: BaseAnim[],
+  add: Phaser.GameObjects.GameObjectFactory,
   step: number
-) => {
+): BaseAnim[] => {
   const pct = step / e.duration;
-  const hitTime = Math.round(e.duration * 0.4);
+  const hitTime = 0.4;
 
   const leftUnit = find(
     myField.contents,
@@ -24,7 +29,7 @@ export const animateFight = (
 
   if (!leftUnit || !rightUnit) {
     console.log(` Unit is missing!`);
-    return;
+    return animationObjects;
   }
 
   const baseUnits = [...e.myUnits, ...e.opponentsUnits];
@@ -35,13 +40,39 @@ export const animateFight = (
     (baseUnit) => baseUnit.id === rightUnit.id
   );
 
-  if (step >= hitTime) {
+  if (pct >= hitTime) {
     leftUnit.health = (baseLeftUnit?.health || 0) - rightUnit.attack;
     rightUnit.health = (baseRightUnit?.health || 0) - leftUnit.attack;
+
+    if (animationObjects.length < 2) {
+      animationObjects = [
+        new DamageNumberAnim(
+          leftUnit.id,
+          leftUnit.x + 80,
+          leftUnit.y + leftUnit.gameObject.displayHeight / 2,
+          rightUnit.attack,
+          add
+        ),
+        new DamageNumberAnim(
+          rightUnit.id,
+          rightUnit.x - 80,
+          rightUnit.y + rightUnit.gameObject.displayHeight / 2,
+          leftUnit.attack,
+          add
+        ),
+      ];
+    }
   } else {
     leftUnit.health = baseLeftUnit?.health || 0;
     rightUnit.health = baseRightUnit?.health || 0;
+
+    if (animationObjects.length > 0) {
+      animationObjects.forEach((anim) => anim.destroy());
+      animationObjects = [];
+    }
   }
+
+  animationObjects.forEach((anim, i) => anim.update(pct * (i * 2 - 1)));
 
   const fAngle1 = -0.4;
   const rot = rotateTowardAngle(0, 0.2, 0, fAngle1, pct);
@@ -136,4 +167,11 @@ export const animateFight = (
     rightUnit.animX = -backupDist - moveDist + movement3;
     rightUnit.animY = -movement3 / 4;
   }
+
+  if (pct === 1) {
+    animationObjects.forEach((anim) => anim.destroy());
+    animationObjects = [];
+  }
+
+  return animationObjects;
 };

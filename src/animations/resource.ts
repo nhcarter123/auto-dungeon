@@ -4,11 +4,8 @@ import { moveTowards } from "../helpers/animation";
 import { IResourceEvent } from "../events/event";
 import { Unit } from "../objects/good/units/unit";
 import { saveData } from "../index";
-
-export interface IAnimation {
-  gameObject: Phaser.GameObjects.Arc;
-  id: string;
-}
+import { BaseAnim } from "../objects/animation/baseAnim";
+import { BuffAnim } from "../objects/animation/buffAnim";
 
 function oneDNoise(x: number): number {
   return Math.sin(2 * x) + Math.sin(Math.PI * x);
@@ -17,10 +14,10 @@ function oneDNoise(x: number): number {
 export const animateResource = (
   e: IResourceEvent,
   units: Unit[],
-  animationObjects: IAnimation[],
+  animationObjects: BaseAnim[],
   add: Phaser.GameObjects.GameObjectFactory,
   step: number
-): IAnimation[] => {
+): BaseAnim[] => {
   const pct = step / e.duration;
   const sourceId = e.sourceId;
   const sourceUnit = find(units, (content) => sourceId === content.id);
@@ -44,26 +41,29 @@ export const animateResource = (
 
       if (xPos && yPos) {
         if (!animObject) {
-          animObject = {
-            gameObject: add.circle(sourceUnit.x, sourceUnit.y, 10, 0xd9d9d9),
-            id: i.toString(),
-          };
-
+          animObject = new BuffAnim(
+            i.toString(),
+            sourceUnit.x,
+            sourceUnit.y,
+            add
+          );
           animationObjects.push(animObject);
         }
 
-        animObject.gameObject.x = xPos - 80 * oneDNoise(i) * sinMod;
-        animObject.gameObject.y = yPos - 80 * oneDNoise(-i) * sinMod;
+        animObject.x = xPos - 80 * oneDNoise(i) * sinMod;
+        animObject.y = yPos - 80 * oneDNoise(-i) * sinMod;
       }
 
       if ((!xPos || pct === finish) && animObject) {
-        animObject.gameObject.destroy();
+        animObject.destroy();
         animationObjects = animationObjects.filter(
           (animObject) => animObject.id !== i.toString()
         );
       }
     }
   }
+
+  animationObjects.forEach((anim) => anim.update());
 
   return animationObjects;
 };

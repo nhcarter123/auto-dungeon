@@ -1,9 +1,5 @@
 import Phaser from "phaser";
 import { EImageKey, EUnitType, IImageData, TUnitOverrides, Unit } from "./unit";
-import { EEventSpeed } from "../../../scenes/battle";
-import { calculateDuration } from "../../../helpers/math";
-import { EEventType, EResource, TBattleEvent } from "../../../events/event";
-import { saveData } from "../../../index";
 
 export class Orc extends Unit {
   constructor(
@@ -17,8 +13,8 @@ export class Orc extends Unit {
     };
 
     const defaults: TUnitOverrides = {
-      attack: 3,
-      health: 2,
+      attack: 2,
+      health: 1,
     };
 
     super(add, EUnitType.Orc, imageData, {
@@ -28,25 +24,6 @@ export class Orc extends Unit {
   }
 
   getDescription(): string {
-    return `Kill: Gain ${this.getStealAmount()} gold`;
-  }
-
-  getStealAmount(): number {
-    return 2 * (this.getLevel() - 1) + 1;
-  }
-
-  createKillEvent(): TBattleEvent | undefined {
-    const amount = this.getStealAmount();
-
-    return {
-      type: EEventType.Resource,
-      startAmount: saveData.gold,
-      amount,
-      sourceId: this.id,
-      duration: calculateDuration(EEventSpeed.Medium, (amount + 4) / 5),
-      resource: EResource.Gold,
-      affectedUnitIds: [],
-      perishedUnitIds: [],
-    };
+    return `Deals excess damage to the next unit`;
   }
 }

@@ -1,20 +1,17 @@
-import Phaser from "phaser";
 import { Shop } from "../objects/fields/shop";
 import { Button } from "../objects/button";
 import moment from "moment";
 import { EScene, screenHeight, screenWidth } from "../config";
 import { PlanningField, ReorderStatus } from "../objects/fields/planningField";
-import { IMAGE_FOLDER } from "./battle";
 import { animateBuff } from "../animations/buff";
 import { saveData } from "../index";
 import { createUnitFromType, reduceUnit } from "../helpers/unit";
 import { lerp } from "../helpers/math";
-import { GameInfo } from "../objects/gameInfo";
-import { EImageKey, ESpriteKey, Unit } from "../objects/good/units/unit";
+import { EImageKey, Unit } from "../objects/good/units/unit";
 import { Good } from "../objects/good/good";
-import { ToolTip } from "../objects/toolTip";
 import { EEventType, TShopEvent } from "../events/event";
-import { animateResource, IAnimation } from "../animations/resource";
+import { animateResource } from "../animations/resource";
+import GameScene from "./gameScene";
 
 export enum EMouseEvent {
   PointerDown = "pointerdown",
@@ -25,24 +22,20 @@ export enum EMouseEvent {
 
 const EVENT_DELAY = 30;
 
-export default class Planning extends Phaser.Scene {
+export default class Planning extends GameScene {
   private field: PlanningField;
   private shop: Shop;
   private rollButton: Button | undefined;
   private sellButton: Button | undefined;
-  private toolTip: ToolTip | undefined; // TODO add scene inheritance for things like tooltip and resources
   private nextButton: Button | undefined;
-  private gameInfo: GameInfo | undefined;
   private selected: Good | undefined;
   private mouseClicked: boolean;
   private mouseReleased: boolean;
   private canInteract: boolean;
   private eventQueue: TShopEvent[];
   private currentEvent: TShopEvent | undefined;
-  private delayStep: number;
-  private durationStep: number;
   private clickedNextButton: boolean;
-  private animationObjects: IAnimation[];
+  private nextRoomDelay: number;
 
   // private selectedOffsetX: number;
   // private selectedOffsetY: number;
@@ -60,25 +53,8 @@ export default class Planning extends Phaser.Scene {
     this.mouseReleased = false;
     this.canInteract = true;
     this.eventQueue = [];
-    this.delayStep = 0;
-    this.durationStep = 0;
     this.clickedNextButton = false;
-    this.animationObjects = [];
-  }
-
-  preload() {
-    Object.values(EImageKey).forEach((key) =>
-      this.load.image(key, `${IMAGE_FOLDER}/${key}.png`)
-    );
-
-    this.load.spritesheet(
-      ESpriteKey.Level,
-      "assets/sprites/level/texture.png",
-      {
-        frameWidth: 170,
-        frameHeight: 124,
-      }
-    );
+    this.nextRoomDelay = 0;
   }
 
   create() {
@@ -108,29 +84,19 @@ export default class Planning extends Phaser.Scene {
       this.endTurn.bind(this)
     );
 
-    this.gameInfo = new GameInfo(this.add, 50, 50);
-    this.toolTip = new ToolTip(this.add, screenWidth - 300, 212);
-
     this.field.create(this.add);
     this.shop.create(this.add);
-
-    const background = this.add.image(
-      screenWidth / 2,
-      screenHeight / 2,
-      EImageKey.BackgroundSwamp
-    );
-    background.depth = -10;
 
     this.input.on(EMouseEvent.PointerDown, () => (this.mouseClicked = true));
     this.input.on(EMouseEvent.PointerUp, () => (this.mouseReleased = true));
 
-    this.events.on("wake", () => this.setup());
-    this.setup();
+    super.create();
   }
 
   setup() {
+    super.setup();
+
     saveData.turn += 1;
-    this.clearFields();
 
     this.field.contents = saveData.units.map((unit) =>
       createUnitFromType(this.add, unit.type, unit)
@@ -147,7 +113,11 @@ export default class Planning extends Phaser.Scene {
     }
 
     if (!this.currentEvent && this.clickedNextButton) {
-      this.goToBattle();
+      if (this.nextRoomDelay > 0) {
+        this.nextRoomDelay -= 1;
+      } else {
+        this.goToBattle();
+      }
     }
 
     if (this.currentEvent) {
@@ -159,6 +129,9 @@ export default class Planning extends Phaser.Scene {
             this.durationStep = 0;
             this.delayStep = 0;
             this.currentEvent = undefined;
+            if (!this.eventQueue.length) {
+              this.nextRoomDelay = 60;
+            }
           } else {
             this.animateEvent();
           }
@@ -183,8 +156,6 @@ export default class Planning extends Phaser.Scene {
     this.rollButton?.update(!this.selected);
     this.sellButton?.update(showSellButton);
     this.nextButton?.update(!this.selected);
-    this.gameInfo?.update();
-    this.toolTip?.update();
 
     // unsure if I like this
     // this.selectedOffsetX = lerp(this.selectedOffsetX, 0, 0.2);
@@ -316,7 +287,7 @@ export default class Planning extends Phaser.Scene {
     if (this.currentEvent) {
       switch (this.currentEvent.type) {
         case EEventType.Buff:
-          animateBuff(
+          this.animationObjects = animateBuff(
             this.currentEvent,
             this.field.contents,
             this.animationObjects,

@@ -45,7 +45,7 @@ export class Spider extends Unit {
       type: EEventType.Ranged,
       attackAmount: this.getRangedAttackAmount(),
       sourceId: this.id,
-      duration: calculateDuration(EEventSpeed.VerySlow),
+      duration: calculateDuration(EEventSpeed.Medium),
       affectedUnitIds: [enemyField.getRandomContent().id],
       perishedUnitIds: [],
     };

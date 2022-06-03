@@ -35,7 +35,7 @@ export class ToolTip {
       wordWrap: { width: width - 2 * padding, useAdvancedWrap: true },
     };
 
-    const title = this.good?.type || "";
+    const title = this.getTitle(this.good?.type || "");
     const description = this.good?.getDescription() || "";
 
     this.backgroundObject = add.rectangle(x, y, width, height, 0x292929, 1);
@@ -52,6 +52,11 @@ export class ToolTip {
     this.update();
   }
 
+  getTitle(str: string) {
+    // Split camel case
+    return str.replace(/([a-z])([A-Z])/g, "$1 $2");
+  }
+
   setVisible(visible: boolean) {
     this.backgroundObject.visible = visible;
     this.titleObject.visible = visible;
@@ -60,7 +65,7 @@ export class ToolTip {
 
   update() {
     if (this.good) {
-      this.titleObject.text = this.good.type;
+      this.titleObject.text = this.getTitle(this.good.type);
       this.descriptionObject.text = this.good.getDescription();
       this.setVisible(true);
     } else {

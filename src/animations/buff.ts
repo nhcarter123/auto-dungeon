@@ -3,15 +3,16 @@ import { find } from "lodash";
 import { moveTowards } from "../helpers/animation";
 import { Unit } from "../objects/good/units/unit";
 import { IBuffEvent } from "../events/event";
-import { IAnimation } from "./resource";
+import { BaseAnim } from "../objects/animation/baseAnim";
+import { BuffAnim } from "../objects/animation/buffAnim";
 
 export const animateBuff = (
   e: IBuffEvent,
   units: Unit[],
-  animationObjects: IAnimation[],
+  animationObjects: BaseAnim[],
   add: Phaser.GameObjects.GameObjectFactory,
   step: number
-): IAnimation[] => {
+): BaseAnim[] => {
   const pct = step / e.duration;
 
   const sourceId = e.sourceId;
@@ -24,10 +25,7 @@ export const animateBuff = (
 
     if (!animationObjects.length) {
       affectedUnits.forEach((unit) => {
-        const animObject = {
-          id: unit.id,
-          gameObject: add.circle(unit.x, unit.y, 10, 0xd9d9d9),
-        };
+        const animObject = new BuffAnim(unit.id, unit.x, unit.y, add);
         animationObjects.push(animObject);
       });
     }
@@ -40,8 +38,8 @@ export const animateBuff = (
       const yPos = sourceUnit.y - 60 * Math.sin(Math.PI * pct) - 40;
 
       if (xPos && yPos) {
-        animObject.gameObject.x = xPos;
-        animObject.gameObject.y = yPos;
+        animObject.x = xPos;
+        animObject.y = yPos;
       }
     }
 
@@ -60,10 +58,12 @@ export const animateBuff = (
         }
       }
 
-      animationObjects.forEach((obj) => obj.gameObject.destroy());
+      animationObjects.forEach((obj) => obj.destroy());
       return [];
     }
   }
+
+  animationObjects.forEach((anim) => anim.update());
 
   return animationObjects;
 };
