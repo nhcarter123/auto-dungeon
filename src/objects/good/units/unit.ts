@@ -16,6 +16,7 @@ export enum EUnitType {
   Lizard = "Lizard",
   Orc = "Orc",
   OrcThief = "OrcThief",
+  ArmoredOrc = "ArmoredOrc",
 }
 
 export interface IImageData {
@@ -42,6 +43,7 @@ export enum EImageKey {
   Gold = "Gold",
   Orc = "Orc",
   OrcThief = "OrcThief",
+  ArmoredOrc = "ArmoredOrc",
 }
 
 export type TUnitOverrides = TGoodOverrides &
@@ -197,6 +199,18 @@ export class Unit extends Good {
       this.xp < MAX_XP &&
       targetUnit.xp < MAX_XP
     );
+  }
+
+  getArmor(): number {
+    return 0;
+  }
+
+  calculateDamage(incomingDamage: number) {
+    return Math.max(incomingDamage - this.getArmor(), 1);
+  }
+
+  createHitEnemyEvent(hitId: string): TBattleEvent | undefined {
+    return;
   }
 
   createKillEvent(): TBattleEvent | undefined {

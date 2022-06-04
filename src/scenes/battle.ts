@@ -31,6 +31,7 @@ export enum EEventSpeed {
   Slow = 140,
   Medium = 100,
   Fast = 60,
+  VeryFast = 40,
 }
 
 export enum EResult {
@@ -337,10 +338,22 @@ export default class Battle extends GameScene {
             return;
           }
 
-          leftUnit.health -= rightUnit.attack;
-          rightUnit.health -= leftUnit.attack;
+          leftUnit.health -= leftUnit.calculateDamage(rightUnit.attack);
+          rightUnit.health -= rightUnit.calculateDamage(leftUnit.attack);
 
-          if (rightUnit.health <= 0) {
+          if (rightUnit.health > 0 && leftUnit.health > 0) {
+            const event1 = rightUnit.createHitEnemyEvent(leftUnit.id);
+            if (event1) {
+              this.eventQueue.push(event1);
+            }
+
+            const event2 = leftUnit.createHitEnemyEvent(rightUnit.id);
+            if (event2) {
+              this.eventQueue.push(event2);
+            }
+          }
+
+          if (rightUnit.health > 0) {
             leftUnit.didKillEnemy = true;
           }
           if (leftUnit.health <= 0) {
@@ -395,7 +408,9 @@ export default class Battle extends GameScene {
               const unit = find(units, (content) => id === content.id);
 
               if (unit) {
-                unit.health -= this.simulatedEvent.attackAmount;
+                unit.health -= unit.calculateDamage(
+                  this.simulatedEvent.attackAmount
+                );
               }
             }
 

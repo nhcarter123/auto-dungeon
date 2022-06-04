@@ -1,33 +1,33 @@
 import Phaser from "phaser";
 import { EImageKey, EUnitType, IImageData, TUnitOverrides, Unit } from "./unit";
 
-export class Golem extends Unit {
+export class ArmoredOrc extends Unit {
   constructor(
     add: Phaser.GameObjects.GameObjectFactory,
     overrides?: TUnitOverrides
   ) {
     const imageData: IImageData = {
-      key: EImageKey.Golem,
-      scale: 0.2,
+      key: EImageKey.ArmoredOrc,
+      scale: 0.25,
       startingDir: -1,
     };
 
     const defaults: TUnitOverrides = {
-      attack: 1,
-      health: 5,
+      attack: 2,
+      health: 2,
     };
 
-    super(add, EUnitType.Golem, imageData, {
+    super(add, EUnitType.ArmoredOrc, imageData, {
       ...defaults,
       ...(overrides || {}),
     });
   }
 
-  getAttackGainAmount(): number {
-    return this.getLevel() * 2;
+  getDescription(): string {
+    return `Incoming damage is reduced by ${this.getArmor()}`;
   }
 
-  getDescription(): string {
-    return `Level up: Gain +${this.getAttackGainAmount()}/+${this.getAttackGainAmount()}`;
+  getArmor(): number {
+    return 2 * (this.getLevel() - 1) + 1;
   }
 }

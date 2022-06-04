@@ -41,8 +41,10 @@ export const animateFight = (
   );
 
   if (pct >= hitTime) {
-    leftUnit.health = (baseLeftUnit?.health || 0) - rightUnit.attack;
-    rightUnit.health = (baseRightUnit?.health || 0) - leftUnit.attack;
+    leftUnit.health =
+      (baseLeftUnit?.health || 0) - leftUnit.calculateDamage(rightUnit.attack);
+    rightUnit.health =
+      (baseRightUnit?.health || 0) - rightUnit.calculateDamage(leftUnit.attack);
 
     if (animationObjects.length < 2) {
       animationObjects = [
@@ -50,14 +52,14 @@ export const animateFight = (
           leftUnit.id,
           leftUnit.x + 80,
           leftUnit.y + leftUnit.gameObject.displayHeight / 2,
-          rightUnit.attack,
+          leftUnit.calculateDamage(rightUnit.attack),
           add
         ),
         new DamageNumberAnim(
           rightUnit.id,
           rightUnit.x - 80,
           rightUnit.y + rightUnit.gameObject.displayHeight / 2,
-          leftUnit.attack,
+          rightUnit.calculateDamage(leftUnit.attack),
           add
         ),
       ];
@@ -72,7 +74,7 @@ export const animateFight = (
     }
   }
 
-  animationObjects.forEach((anim, i) => anim.update(pct * (i * 2 - 1)));
+  animationObjects.forEach((anim) => anim.update(pct));
 
   const fAngle1 = -0.4;
   const rot = rotateTowardAngle(0, 0.2, 0, fAngle1, pct);

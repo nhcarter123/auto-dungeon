@@ -1,5 +1,8 @@
 import Phaser from "phaser";
 import { EImageKey, EUnitType, IImageData, TUnitOverrides, Unit } from "./unit";
+import { EEventType, TBattleEvent } from "../../../events/event";
+import { calculateDuration } from "../../../helpers/math";
+import { EEventSpeed } from "../../../scenes/battle";
 
 export class Orc extends Unit {
   constructor(
@@ -13,8 +16,8 @@ export class Orc extends Unit {
     };
 
     const defaults: TUnitOverrides = {
-      attack: 2,
-      health: 1,
+      attack: 1,
+      health: 3,
     };
 
     super(add, EUnitType.Orc, imageData, {
@@ -24,6 +27,23 @@ export class Orc extends Unit {
   }
 
   getDescription(): string {
-    return `Deals excess damage to the next unit`;
+    return `Hit enemy: Reduce enemy attack by ${this.getReductionAmount()}`;
+  }
+
+  getReductionAmount(): number {
+    return this.getLevel();
+  }
+
+  createHitEnemyEvent(hitId: string): TBattleEvent | undefined {
+    return {
+      type: EEventType.Buff,
+      attackAmount: -this.getReductionAmount(),
+      healthAmount: 0,
+      sourceId: this.id,
+      duration: calculateDuration(EEventSpeed.Medium),
+      affectedUnitIds: [hitId],
+      perishedUnitIds: [],
+      untilEndOfBattleOnly: true,
+    };
   }
 }
