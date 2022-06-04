@@ -33,7 +33,7 @@ export class Field<ContentType extends Good> {
       this.width,
       this.height,
       0xbaffe5,
-      0.5
+      0.25
     );
 
     this.gameObject.depth = -1;

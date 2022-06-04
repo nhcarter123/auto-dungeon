@@ -17,6 +17,7 @@ export enum EUnitType {
   Orc = "Orc",
   OrcThief = "OrcThief",
   ArmoredOrc = "ArmoredOrc",
+  Falcon = "Falcon",
 }
 
 export interface IImageData {
@@ -44,6 +45,7 @@ export enum EImageKey {
   Orc = "Orc",
   OrcThief = "OrcThief",
   ArmoredOrc = "ArmoredOrc",
+  Falcon = "Falcon",
 }
 
 export type TUnitOverrides = TGoodOverrides &
@@ -67,6 +69,7 @@ export class Unit extends Good {
   public xp: number;
   public visible: boolean;
   public beforeAttackOnCooldown: boolean;
+  public beforeBattleOnCooldown: boolean;
   public didKillEnemy: boolean;
   public type: EUnitType;
 
@@ -87,6 +90,7 @@ export class Unit extends Good {
     this.visible = overrides.visible === undefined ? true : overrides.visible;
     this.type = type;
     this.beforeAttackOnCooldown = false;
+    this.beforeBattleOnCooldown = false;
     this.didKillEnemy = false;
 
     const fontStyle = {
@@ -206,10 +210,17 @@ export class Unit extends Good {
   }
 
   calculateDamage(incomingDamage: number) {
-    return Math.max(incomingDamage - this.getArmor(), 1);
+    return Math.max(incomingDamage - this.getArmor(), 0); // should we have a minimum of 1?
   }
 
   createHitEnemyEvent(hitId: string): TBattleEvent | undefined {
+    return;
+  }
+
+  createBeforeBattleEvent(
+    myField: Battlefield,
+    opponentsField: Battlefield
+  ): TBattleEvent | undefined {
     return;
   }
 

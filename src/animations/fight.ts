@@ -50,14 +50,14 @@ export const animateFight = (
       animationObjects = [
         new DamageNumberAnim(
           leftUnit.id,
-          leftUnit.x + 80,
+          leftUnit.x + 60,
           leftUnit.y + leftUnit.gameObject.displayHeight / 2,
           leftUnit.calculateDamage(rightUnit.attack),
           add
         ),
         new DamageNumberAnim(
           rightUnit.id,
-          rightUnit.x - 80,
+          rightUnit.x - 60,
           rightUnit.y + rightUnit.gameObject.displayHeight / 2,
           rightUnit.calculateDamage(leftUnit.attack),
           add

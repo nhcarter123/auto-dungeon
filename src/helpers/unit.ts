@@ -10,6 +10,7 @@ import { Lizard } from "../objects/good/units/lizard";
 import { Orc } from "../objects/good/units/orc";
 import { OrcThief } from "../objects/good/units/orcThief";
 import { ArmoredOrc } from "../objects/good/units/armoredOrc";
+import { Falcon } from "../objects/good/units/falcon";
 
 export type TReducedUnitData = TUnitOverrides & Pick<Unit, "type">;
 
@@ -51,6 +52,8 @@ export const createUnitFromType = (
       return new OrcThief(add, overrides);
     case EUnitType.ArmoredOrc:
       return new ArmoredOrc(add, overrides);
+    case EUnitType.Falcon:
+      return new Falcon(add, overrides);
   }
 };
 

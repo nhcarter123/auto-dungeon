@@ -283,6 +283,28 @@ export default class Battle extends GameScene {
     }
   }
 
+  handleBeforeBattleEvent(): boolean {
+    const units = [...this.myField.contents, ...this.opponentsField.contents];
+
+    for (const unit of units) {
+      if (!unit.beforeBattleOnCooldown) {
+        const event = unit.createBeforeBattleEvent(
+          this.myField,
+          this.opponentsField
+        );
+        if (event) {
+          this.eventQueue.push(event);
+          unit.beforeBattleOnCooldown = true;
+          return true;
+        }
+      }
+
+      unit.beforeBattleOnCooldown = true;
+    }
+
+    return false;
+  }
+
   handleFrontFightEvent() {
     const myFirstUnit = this.myField.contents[0];
     const theirFirstUnit = this.opponentsField.contents[0];
@@ -584,6 +606,7 @@ export default class Battle extends GameScene {
   simulate() {
     this.timeline = [];
     const maxSteps = 1000;
+    let beforeBattle = true;
     let index = 0;
 
     // todo disable rendering
@@ -615,15 +638,21 @@ export default class Battle extends GameScene {
         ) {
           this.createResultEvent();
         } else {
+          // trigger before-battle events for all units
+          if (!this.eventQueue.length && beforeBattle) {
+            beforeBattle = this.handleBeforeBattleEvent();
+            console.log(beforeBattle);
+          }
+
+          // trigger before-fight events for all units
           if (!this.eventQueue.length) {
             this.handleBeforeUnitInFrontAttacksEvent();
           }
 
+          // trigger fight events for all units
           if (!this.eventQueue.length) {
             this.handleFrontFightEvent();
           }
-
-          // trigger pre-combat events for all units
         }
       }
 

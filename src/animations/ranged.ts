@@ -36,11 +36,10 @@ export const animateRanged = (
       const start = (i / (totalUnits + 1)) * 0.5;
       const finish = ((i + 2) / (totalUnits + 1)) * 0.5;
 
+      const scaledPct = (pct - start) / (finish - start);
+
       const xPos = moveTowards(start, finish, sourceUnit.x, unit.x, pct);
-      const yPos =
-        sourceUnit.y -
-        60 * Math.sin((Math.PI * (pct - start)) / (finish - start)) -
-        25;
+      const yPos = sourceUnit.y - 60 * Math.sin(Math.PI * scaledPct); //- 25 + scaledPct * 25;
 
       let attackObject = animationObjects.find(
         (animObject) => animObject.id === unit.id
