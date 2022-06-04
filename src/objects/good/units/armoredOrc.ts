@@ -24,7 +24,7 @@ export class ArmoredOrc extends Unit {
   }
 
   getDescription(): string {
-    return `Incoming damage is reduced by ${this.getArmor()}`;
+    return `Takes ${this.getArmor()} less damage`;
   }
 
   getArmor(): number {

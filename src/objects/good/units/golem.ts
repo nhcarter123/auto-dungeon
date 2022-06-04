@@ -1,5 +1,8 @@
 import Phaser from "phaser";
 import { EImageKey, EUnitType, IImageData, TUnitOverrides, Unit } from "./unit";
+import { EEventType, TShopEvent } from "../../../events/event";
+import { calculateDuration } from "../../../helpers/math";
+import { EEventSpeed } from "../../../scenes/battle";
 
 export class Golem extends Unit {
   constructor(
@@ -23,11 +26,24 @@ export class Golem extends Unit {
     });
   }
 
-  getAttackGainAmount(): number {
+  createLevelUpEvent(): TShopEvent | undefined {
+    return {
+      type: EEventType.Buff,
+      attackAmount: this.getStatGainAmount(),
+      healthAmount: this.getStatGainAmount(),
+      sourceId: this.id,
+      duration: calculateDuration(EEventSpeed.Medium),
+      affectedUnitIds: [this.id],
+      perishedUnitIds: [],
+      untilEndOfBattleOnly: false,
+    };
+  }
+
+  getStatGainAmount(): number {
     return this.getLevel() * 2;
   }
 
   getDescription(): string {
-    return `Level up: Gain +${this.getAttackGainAmount()}/+${this.getAttackGainAmount()}`;
+    return `Level up: Gain +${this.getStatGainAmount()}/+${this.getStatGainAmount()}`;
   }
 }

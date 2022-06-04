@@ -70,13 +70,17 @@ export class PlanningField extends Field<Unit> {
     };
   }
 
-  mergeUnits(baseUnit: Unit, mergingUnit: Unit) {
+  mergeUnits(baseUnit: Unit, mergingUnit: Unit): boolean {
+    const previousLevel = baseUnit.getLevel();
+
     baseUnit.xp = Math.min(baseUnit.xp + mergingUnit.xp, MAX_XP);
     baseUnit.attack = Math.max(baseUnit.attack, mergingUnit.attack) + 1;
     baseUnit.health = Math.max(baseUnit.health, mergingUnit.health) + 1;
 
     this.removeContent(mergingUnit.id);
     mergingUnit.delete();
+
+    return baseUnit.getLevel() > previousLevel;
   }
 
   setWidth() {

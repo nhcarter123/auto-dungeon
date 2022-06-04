@@ -4,14 +4,18 @@ import { EImageKey } from "./good/units/unit";
 import { lerp } from "../helpers/math";
 
 export class GameInfo {
-  public goldIconObject: Phaser.GameObjects.Image;
-  public goldObject: Phaser.GameObjects.Text;
-  public turnIconObject: Phaser.GameObjects.Image;
-  public turnObject: Phaser.GameObjects.Text;
+  readonly goldIconObject: Phaser.GameObjects.Image;
+  readonly goldObject: Phaser.GameObjects.Text;
+  readonly turnIconObject: Phaser.GameObjects.Image;
+  readonly turnObject: Phaser.GameObjects.Text;
+  readonly relics: Phaser.GameObjects.Image[];
+  readonly relicsBackground: Phaser.GameObjects.Rectangle;
   public scale: number;
-  public previousGold: number;
+  readonly width: number;
+  private previousGold: number;
 
   constructor(add: Phaser.GameObjects.GameObjectFactory, x: number, y: number) {
+    this.width = 1290;
     this.scale = 0.75;
     this.previousGold = saveData.gold;
 
@@ -39,9 +43,21 @@ export class GameInfo {
       saveData.turn.toString(),
       fontStyle
     );
+
+    this.relics = [];
+    this.relicsBackground = add.rectangle(
+      x + this.width / 2 + 200,
+      y,
+      this.width,
+      60,
+      0xffffff,
+      0.25
+    );
   }
 
   update() {
+    // for (const relic of saveData.relics)
+
     if (this.previousGold !== saveData.gold) {
       this.previousGold = saveData.gold;
       this.goldIconObject.scale = this.scale * 0.8;

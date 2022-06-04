@@ -120,6 +120,36 @@ export default class Battle extends GameScene {
     super.create();
   }
 
+  setup() {
+    super.setup();
+
+    this.currentEventIndex = -1;
+    this.clearFields();
+
+    this.myField.contents = [...saveData.units]
+      .reverse()
+      .map((unit) => createUnitFromType(this.add, unit.type, unit));
+
+    const overrides = {
+      facingDir: -1,
+      attack: 1 + Math.round(saveData.turn / 1.5),
+      health: 1 + Math.round(saveData.turn / 1.5),
+    };
+
+    const unitCount = Math.min(Math.round((saveData.turn + 2) / 4), 6) + 2;
+
+    for (let i = 0; i < unitCount; i++) {
+      this.opponentsField.contents.push(
+        createUnitFromType(this.add, getRandomUnitType(), overrides)
+      );
+    }
+
+    this.myField.positionContent(1);
+    this.opponentsField.positionContent(1);
+
+    this.simulate();
+  }
+
   update(time: number, delta: number) {
     super.update(time, delta);
 
@@ -221,36 +251,6 @@ export default class Battle extends GameScene {
         }
       }
     }
-  }
-
-  setup() {
-    super.setup();
-
-    this.currentEventIndex = -1;
-    this.clearFields();
-
-    this.myField.contents = [...saveData.units]
-      .reverse()
-      .map((unit) => createUnitFromType(this.add, unit.type, unit));
-
-    const overrides = {
-      facingDir: -1,
-      attack: 1 + Math.round(saveData.turn / 2),
-      health: 1 + Math.round(saveData.turn / 2),
-    };
-
-    const unitCount = Math.min(Math.round(saveData.turn / 5), 5) + 2;
-
-    for (let i = 0; i < unitCount; i++) {
-      this.opponentsField.contents.push(
-        createUnitFromType(this.add, getRandomUnitType(), overrides)
-      );
-    }
-
-    this.myField.positionContent(1);
-    this.opponentsField.positionContent(1);
-
-    this.simulate();
   }
 
   getCurrentEvent(): TTimelineEvent<TBattleEvent> | undefined {

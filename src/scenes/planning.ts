@@ -121,7 +121,7 @@ export default class Planning extends GameScene {
     }
 
     if (this.currentEvent) {
-      this.canInteract = false;
+      this.setInteractive(false);
 
       if (this.delayStep > EVENT_DELAY) {
         if (this.currentEvent) {
@@ -130,7 +130,11 @@ export default class Planning extends GameScene {
             this.delayStep = 0;
             this.currentEvent = undefined;
             if (!this.eventQueue.length) {
-              this.nextRoomDelay = 60;
+              if (this.clickedNextButton) {
+                this.nextRoomDelay = 60;
+              } else {
+                this.setInteractive(true);
+              }
             }
           } else {
             this.animateEvent();
@@ -258,7 +262,17 @@ export default class Planning extends GameScene {
             }
 
             if (allowedToMerge) {
-              this.field.mergeUnits(reorderStatus.mergingUnit, this.selected);
+              const didLevelUp = this.field.mergeUnits(
+                reorderStatus.mergingUnit,
+                this.selected
+              );
+
+              if (didLevelUp) {
+                const event = reorderStatus.mergingUnit.createLevelUpEvent();
+                if (event) {
+                  this.eventQueue.push(event);
+                }
+              }
             }
           } else {
             if (this.shop.contains(this.selected.id)) {

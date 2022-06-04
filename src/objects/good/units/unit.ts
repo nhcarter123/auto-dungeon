@@ -5,7 +5,7 @@ import { lerp } from "../../../helpers/math";
 import { Good, TGoodOverrides } from "../good";
 import { TBattleEvent, TShopEvent } from "../../../events/event";
 
-export const MAX_XP = 5;
+export const MAX_XP = 6;
 
 export enum EUnitType {
   Skeleton = "Skeleton",
@@ -243,6 +243,10 @@ export class Unit extends Good {
   }
 
   createEndTurnEvent(field: PlanningField): TShopEvent | undefined {
+    return;
+  }
+
+  createLevelUpEvent(): TShopEvent | undefined {
     return;
   }
 

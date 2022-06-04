@@ -47,7 +47,7 @@ export class Ogre extends Unit {
         duration: calculateDuration(EEventSpeed.Fast),
         affectedUnitIds: [field.contents[index + 1].id],
         perishedUnitIds: [],
-        untilEndOfBattleOnly: true,
+        untilEndOfBattleOnly: false,
       };
     }
   }
