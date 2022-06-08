@@ -1,8 +1,8 @@
-import { Shop } from "../objects/fields/shop";
+import { Shop } from "../objects/field/shop";
 import { Button } from "../objects/button";
 import moment from "moment";
 import { EScene, screenHeight, screenWidth } from "../config";
-import { PlanningField, ReorderStatus } from "../objects/fields/planningField";
+import { PlanningField, ReorderStatus } from "../objects/field/planningField";
 import { animateBuff } from "../animations/buff";
 import { saveData } from "../index";
 import { createUnitFromType, reduceUnit } from "../helpers/unit";
@@ -200,13 +200,17 @@ export default class Planning extends GameScene {
       if (!hovered) {
         hovered = this.shop.hoverContent(mouseX, mouseY);
       }
+
+      if (!hovered && this.gameInfo) {
+        hovered = this.gameInfo.hoverRelic(mouseX, mouseY);
+      }
     }
 
     if (hovered && hovered.id !== this.selected?.id) {
       hovered.scaleMod = 1.1;
 
       if (this.toolTip) {
-        this.toolTip.good = hovered;
+        this.toolTip.source = hovered;
       }
     }
 

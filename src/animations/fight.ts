@@ -1,5 +1,5 @@
 import { find } from "lodash";
-import { Field } from "../objects/fields/field";
+import { Field } from "../objects/field/field";
 import { moveTowards, rotateTowardAngle } from "../helpers/animation";
 import { Unit } from "../objects/good/units/unit";
 import { IFightEvent, TTimelineEvent } from "../events/event";

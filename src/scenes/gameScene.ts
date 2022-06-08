@@ -13,7 +13,7 @@ export default class GameScene extends Phaser.Scene {
   public durationStep: number;
   public animationObjects: BaseAnim[];
   public toolTip: ToolTip | undefined;
-  private gameInfo: GameInfo | undefined;
+  public gameInfo: GameInfo | undefined;
 
   constructor(scene: string) {
     super(scene);
@@ -57,7 +57,7 @@ export default class GameScene extends Phaser.Scene {
   update(time: number, delta: number) {
     super.update(time, delta);
 
-    this.gameInfo?.update();
+    this.gameInfo?.update(this.add);
     this.toolTip?.update();
   }
 

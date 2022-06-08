@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { Battlefield } from "../objects/fields/battlefield";
+import { Battlefield } from "../objects/field/battlefield";
 import { EScene, screenHeight, screenWidth } from "../config";
 import { find } from "lodash";
 import { animateFight } from "../animations/fight";

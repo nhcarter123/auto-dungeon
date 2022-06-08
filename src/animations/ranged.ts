@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 import { find } from "lodash";
 import { moveTowards } from "../helpers/animation";
-import { Battlefield } from "../objects/fields/battlefield";
+import { Battlefield } from "../objects/field/battlefield";
 import { IRangedEvent, TTimelineEvent } from "../events/event";
 import { BaseAnim } from "../objects/animation/baseAnim";
 import { BuffAnim } from "../objects/animation/buffAnim";

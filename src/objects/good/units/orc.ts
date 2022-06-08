@@ -31,7 +31,7 @@ export class Orc extends Unit {
   }
 
   getReductionAmount(): number {
-    return this.getLevel();
+    return 2 * this.getLevel();
   }
 
   createHitEnemyEvent(hitId: string): TBattleEvent | undefined {

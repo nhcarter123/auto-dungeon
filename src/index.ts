@@ -3,9 +3,11 @@ import config from "./config";
 import PlanningScene from "./scenes/planning";
 import BattleScene from "./scenes/battle";
 import { TReducedUnitData } from "./helpers/unit";
+import { ERelicType } from "./objects/good/relics/relic";
 
 interface SaveData {
   units: TReducedUnitData[];
+  relics: ERelicType[];
   fastForward: number;
   gold: number;
   turn: number;
@@ -24,6 +26,7 @@ export const saveData: SaveData = {
     // { type: EUnitType.Skeleton },
     // { type: EUnitType.Skeleton },
   ],
+  relics: [ERelicType.Box, ERelicType.Box, ERelicType.Box, ERelicType.Box],
   fastForward: 1,
   gold: 10,
   turn: 0,

@@ -1,6 +1,6 @@
 import Phaser from "phaser";
-import { Battlefield } from "../../fields/battlefield";
-import { PlanningField } from "../../fields/planningField";
+import { Battlefield } from "../../field/battlefield";
+import { PlanningField } from "../../field/planningField";
 import { lerp } from "../../../helpers/math";
 import { Good, TGoodOverrides } from "../good";
 import { TBattleEvent, TShopEvent } from "../../../events/event";

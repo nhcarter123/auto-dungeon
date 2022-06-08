@@ -3,8 +3,9 @@ import { nanoid } from "nanoid";
 import { lerp } from "../../helpers/math";
 import { EItemType } from "./items/item";
 import { EUnitType, IImageData } from "./units/unit";
+import { ERelicType } from "./relics/relic";
 
-type TGoodType = EItemType | EUnitType;
+type TGoodType = EItemType | EUnitType | ERelicType;
 
 export type TGoodOverrides = Partial<
   Pick<Good, "cost" | "id" | "facingDir" | "x" | "y">

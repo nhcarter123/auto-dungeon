@@ -7,7 +7,7 @@ export class ToolTip {
   private backgroundObject: Phaser.GameObjects.Rectangle;
   private titleObject: Phaser.GameObjects.Text;
   private descriptionObject: Phaser.GameObjects.Text;
-  public good: Good | undefined;
+  public source: Good | undefined;
   // public scale: number;
   // public scaleMod: number;
 
@@ -35,8 +35,8 @@ export class ToolTip {
       wordWrap: { width: width - 2 * padding, useAdvancedWrap: true },
     };
 
-    const title = this.getTitle(this.good?.type || "");
-    const description = this.good?.getDescription() || "";
+    const title = this.getTitle(this.source?.type || "");
+    const description = this.source?.getDescription() || "";
 
     this.backgroundObject = add.rectangle(x, y, width, height, 0x292929, 1);
     this.titleObject = add
@@ -64,13 +64,13 @@ export class ToolTip {
   }
 
   update() {
-    if (this.good) {
-      this.titleObject.text = this.getTitle(this.good.type);
-      this.descriptionObject.text = this.good.getDescription();
+    if (this.source) {
+      this.titleObject.text = this.getTitle(this.source.type);
+      this.descriptionObject.text = this.source.getDescription();
       this.setVisible(true);
     } else {
       this.setVisible(false);
     }
-    this.good = undefined;
+    this.source = undefined;
   }
 }

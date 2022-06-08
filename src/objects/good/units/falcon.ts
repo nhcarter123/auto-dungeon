@@ -2,7 +2,7 @@ import Phaser from "phaser";
 import { EImageKey, EUnitType, IImageData, TUnitOverrides, Unit } from "./unit";
 import { EEventSpeed } from "../../../scenes/battle";
 import { calculateDuration } from "../../../helpers/math";
-import { Battlefield } from "../../fields/battlefield";
+import { Battlefield } from "../../field/battlefield";
 import { EEventType, IRangedEvent } from "../../../events/event";
 
 export class Falcon extends Unit {
